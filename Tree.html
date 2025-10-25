@@ -10,21 +10,22 @@
     <style>
         :root {
             --bg-color: #101010;
-            --surface1-color: #1e1e1e; 
+            --surface1-color: #1e1e1e;  
             --text-primary: #f0f0f0; /* White text */
             --text-secondary: #a0a0a0; /* Light Gray for lines/borders */
             --accent-primary: #e0e0e0; /* Brightest Gray/White for leaf fill & hover borders */
-            --icon-color-1: #f04a94; 
+            --icon-color-1: #f04a94;  
             --icon-color-2: #3b82f6; /* Blue border */
             /* Added label-bg back */
             --label-bg: rgba(30, 30, 30, 0.75); /* Darker semi-transparent bg */
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
+            /* Reverted font */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
-            overflow: hidden; 
+            overflow: hidden;  
         }
         .page-container {
             display: flex;
@@ -43,7 +44,7 @@
             align-items: center;
             gap: 20px;
             position: relative;
-            z-index: 100; 
+            z-index: 100;  
             flex-shrink: 0;
         }
         .back-button {
@@ -51,13 +52,13 @@
             text-decoration: none;
             font-size: 1.5rem;
             font-weight: bold;
-            padding: 4px 12px;
+            padding: 4px 12px; /* Reverted padding */
             border-radius: 8px;
             transition: background-color 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            line-height: 1; 
+            line-height: 1;  
         }
         .back-button:hover { background-color: #333; }
         .page-header h1 {
@@ -71,7 +72,7 @@
 
         /* --- Tree Visualization --- */
         #tree-container {
-            flex-grow: 1; 
+            flex-grow: 1;  
             width: 100%;
             z-index: 1;
         }
@@ -85,9 +86,9 @@
             z-index: 5;
         }
 
-        /* --- Modal (Unchanged) --- */
+        /* --- Modal --- */
         #modal-overlay {
-            display: none; 
+            display: none;  
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
@@ -140,6 +141,7 @@
             border: 1px solid #333;
             font-size: 0.9rem;
             white-space: pre-wrap;
+            /* Reverted: solution is visible by default */
         }
         .video-link {
             display: block;
@@ -211,7 +213,7 @@
         // --- END MOCK DATABASE ---
 
 
-        // --- MODAL FUNCTIONS (Unchanged) ---
+        // --- MODAL FUNCTIONS ---
         const modalOverlay = document.getElementById('modal-overlay');
         const modalClose = document.getElementById('modal-close');
         const modalTitle = document.getElementById('modal-title');
@@ -233,6 +235,7 @@
                 skillContent.problems.forEach(prob => {
                     const problemEl = document.createElement('div');
                     problemEl.className = 'problem';
+                    // --- Reverted to original ---
                     problemEl.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
                     problemsContainer.appendChild(problemEl);
                 });
@@ -260,23 +263,23 @@
         function buildFullTree(skillName) {
             const nodeData = FAKE_SKILL_DB[skillName];
             if (!nodeData) {
-                return { name: skillName, children: [] }; 
+                return { name: skillName, children: [] };  
             }
             
-            let newNode = { name: nodeData.name }; 
+            let newNode = { name: nodeData.name };  
             if (nodeData.children && nodeData.children.length > 0) {
                 newNode.children = nodeData.children.map(child => buildFullTree(child.name));
             } else {
-                newNode.children = []; 
+                newNode.children = [];  
             }
             
             return newNode;
         }
 
 
-        // --- ECHARTS IMPLEMENTATION (LABEL BOXES ADDED BACK) ---
+        // --- ECHARTS IMPLEMENTATION (REVERTED TO ORIGINAL) ---
         
-        const animationDuration = 500; 
+        const animationDuration = 500;  
 
         /**
          * Main ECharts function to draw the tree.
@@ -287,27 +290,23 @@
             treeContainer.innerHTML = `<p class="loading-message">Loading visualization...</p>`;
             
             setTimeout(() => {
-                treeContainer.innerHTML = ''; 
-                const myChart = echarts.init(treeContainer, null, { renderer: 'canvas' }); 
+                treeContainer.innerHTML = '';  
+                const myChart = echarts.init(treeContainer, null, { renderer: 'canvas' });  
 
-                // --- MODIFICATION START ---
-                // We will set this to 1 to show children if the root is hidden
-                let treeDepth = 0; 
+                let treeDepth = 0;  
 
                 // Hide the root node ONLY if it has children.
                 if (data.children && data.children.length > 0) {
-                    data.symbolSize = 1; // Use a tiny, non-zero size for layout
+                    data.symbolSize = 1; // Use tiny, non-zero size
                     treeDepth = 1; // Show the children
                 }
-                // --- MODIFICATION END ---
-
 
                 const chartOptions = {
                     backgroundColor: '#101010', // Explicit background
                     tooltip: {
                         trigger: 'item',
                         triggerOn: 'mousemove',
-                        backgroundColor: 'rgba(30, 30, 30, 0.9)', 
+                        backgroundColor: 'rgba(30, 30, 30, 0.9)',  
                         borderColor: '#555',
                         borderWidth: 1,
                         textStyle: { color: '#f0f0f0' }
@@ -315,79 +314,68 @@
                     series: [
                         {
                             type: 'tree',
-                            data: [data], 
-                            layout: 'radial', 
-                            roam: true, 
+                            data: [data],  
+                            layout: 'radial',  
+                            roam: true,  
                             expandAndCollapse: true,
-                            animationDuration: animationDuration, 
+                            animationDuration: animationDuration,  
                             
-                            // --- MODIFICATION ---
-                            // Use the treeDepth variable we just set
-                            initialTreeDepth: treeDepth, 
+                            initialTreeDepth: treeDepth,  
                             
                             symbol: 'circle',
-                            symbolSize: 1, 
+                            symbolSize: 1, // Reverted to 1px to hide symbols
                             
-                            label: { // Style for ALL node labels initially
-                                show: true, 
-                                position: 'auto', 
+                            label: { // Style for ALL node labels
+                                show: true,  
+                                position: 'auto',  
                                 verticalAlign: 'middle',
-                                align: 'auto', 
-                                fontSize: 14,
+                                align: 'auto',  
+                                fontSize: 14, // Reverted
                                 color: '#f0f0f0', // White text
-                                triggerEvent: true, 
-                                rotate: 0, 
-                                // ** ADDED background box back **
-                                backgroundColor: 'rgba(30, 30, 30, 0.75)', 
-                                padding: [4, 7], 
-                                borderRadius: 4,
+                                triggerEvent: true,  
+                                rotate: 0,  
+                                backgroundColor: 'rgba(30, 30, 30, 0.75)',  
+                                padding: [4, 7],  // Reverted
+                                borderRadius: 4, // Reverted
 
-                                // --- MODIFICATION: Added emphasis block back ---
-                                emphasis: {
+                                emphasis: { // Reverted
                                     color: '#ffffff',
-                                    focus: 'ancestor' // This dims non-related nodes
+                                    focus: 'ancestor' 
                                 }
                             },
                             
-                            lineStyle: {
-                                color: '#a0a0a0', 
-                                width: 1.5, 
+                            lineStyle: { // Reverted line style for visibility
+                                color: '#a0a0a0',  
+                                width: 1.5,  
                                 curveness: 0.5,
-                                opacity: 0.9 
+                                opacity: 0.9  
                             },
                             
                             leaves: { // Specific styles ONLY for leaf nodes
                                 label: {
-                                    show: true, 
-                                    color: '#f0f0f0', // White text
-                                     // ** ADDED background box back **
-                                    backgroundColor: 'rgba(30, 30, 30, 0.75)', 
-                                    padding: [4, 7], 
+                                    show: true,  
+                                    color: '#f0f0f0', 
+                                    backgroundColor: 'rgba(30, 30, 30, 0.75)',  
+                                    padding: [4, 7],  
                                     borderRadius: 4,
-
-                                    // --- MODIFICATION: Added emphasis block back ---
-                                    emphasis: {
+                                    emphasis: { // Reverted
                                         color: '#ffffff',
-                                        focus: 'ancestor' // Also apply to leaves
+                                        focus: 'ancestor' 
                                     }
                                 },
-                                itemStyle: {
-                                    color: '#1e1e1e', // Dark gray fill
-                                    borderColor: '#a0a0a0', // Light Gray border
-                                    borderWidth: 1.5 
+                                itemStyle: { // Reverted
+                                    color: '#1e1e1e', 
+                                    borderColor: '#a0a0a0',
+                                    borderWidth: 1.5  
                                 }
                             },
                             
-                            itemStyle: { // Style for internal nodes (non-leaf)
-                                color: '#666', // Medium gray fill
-                                borderColor: '#3b82f6', // Blue border 
+                            itemStyle: { // Reverted
+                                color: '#666', 
+                                borderColor: '#3b82f6',
                                 borderWidth: 1.5,
-                                opacity: 1 
+                                opacity: 1  
                             }
-                            
-                            // The main emphasis block that was commented out is not needed
-                            // if we put the focus logic inside the label blocks,
-                            // as the hover is triggered by the label.
                         }
                     ]
                 };
@@ -414,7 +402,7 @@
                 window.addEventListener('resize', () => {
                     myChart.resize();
                 });
-            }, 10); 
+            }, 10);  
         }
 
 
@@ -429,7 +417,7 @@
             
             const initialData = buildFullTree(prompt);
             
-            drawEChartTree(initialData); 
+            drawEChartTree(initialData);  
 
             // Set up modal listeners
             modalClose.addEventListener('click', closeModal);
