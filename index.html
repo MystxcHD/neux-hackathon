@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Skill Tree - Home</title>
+    <title>Concept Visualizer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
     <style>
+        /* All CSS is identical to the previous version */
         :root {
             --bg-color: #101010;
             --surface1-color: #1e1e1e;
@@ -12,145 +15,559 @@
             --text-secondary: #a0a0a0;
             --accent-primary: #e0e0e0;
             --accent-primary-text: #101010;
-            --icon-color-1: #f04a94;
-            --icon-color-2: #3b82f6;
-            --icon-color-3: #2dd4bf;
+            --border-color: #333;
+            --dot-color: #3a3a3a;
+            --icon-color-2: #3b82f6; 
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 40px 20px;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; 
         }
-        .container { max-width: 760px; width: 100%; text-align: center; }
-        header { margin-bottom: 40px; }
-        .logo-icon svg { width: 48px; height: 48px; fill: var(--text-primary); margin-bottom: 16px; }
-        header h1 { font-size: 2.75rem; font-weight: 700; margin-bottom: 8px; }
-        header .subtitle { font-size: 1.125rem; color: var(--text-secondary); }
-        .input-section {
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+        }
+        #tree-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: center;
+        }
+
+        /* Floating panel */
+        #floating-panel {
+            position: fixed;
+            left: calc(100vw - 344px);
+            top: 24px;
+            width: 320px;
+            min-width: 280px;
+            min-height: 200px;
+            max-height: calc(100vh - 48px);
             background-color: var(--surface1-color);
-            border: 1px solid #333;
+            border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 32px;
-            text-align: left;
-            margin-bottom: 40px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
+        #floating-panel header { 
+            padding: 24px 24px 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: move;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
+        header .subtitle { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.4; }
+        #collapse-btn {
+            background: none; border: none; color: var(--text-secondary); cursor: pointer;
+            padding: 4px; margin-top: -4px; margin-right: -8px; border-radius: 6px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        #collapse-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
+        #collapse-btn svg { width: 20px; height: 20px; stroke-width: 2.5; transition: transform 0.2s ease-in-out; }
+
+        /* Form styling */
+        #prompt-form {
+            padding: 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .input-section { flex: 1; display: flex; flex-direction: column; text-align: left; }
         .input-section label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 12px; }
         .input-section textarea {
-            width: 100%;
-            height: 120px;
-            background-color: var(--bg-color);
-            border: 1px solid #444;
-            border-radius: 10px;
-            padding: 16px;
-            font-family: inherit;
-            font-size: 1rem;
-            color: var(--text-primary);
-            resize: vertical;
+            width: 100%; flex: 1; min-height: 100px; background-color: var(--bg-color);
+            border: 1px solid #444; border-radius: 10px; padding: 16px;
+            font-family: inherit; font-size: 1rem; color: var(--text-primary); resize: vertical;
         }
         .input-section textarea::placeholder { color: #666; }
         #generate-btn {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 16px;
-            margin-top: 24px;
-            background-color: var(--accent-primary);
-            color: var(--accent-primary-text);
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            width: 100%; padding: 16px; margin-top: 16px; background-color: var(--accent-primary);
+            color: var(--accent-primary-text); border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 700; cursor: pointer; transition: background-color 0.2s ease;
         }
         #generate-btn:hover { background-color: #c0c0c0; }
         #generate-btn svg { width: 20px; height: 20px; stroke: var(--accent-primary-text); }
-        .features-section { display: flex; justify-content: space-between; gap: 20px; }
-        .feature-card {
-            flex: 1;
+
+        /* Collapsed State */
+        #floating-panel.is-collapsed { min-height: 0; height: auto; }
+        #floating-panel.is-collapsed #prompt-form { display: none; }
+        #floating-panel.is-collapsed header { border-bottom: none; }
+        #floating-panel.is-collapsed #collapse-btn svg { transform: rotate(180deg); }
+        
+        /* Responsive layout */
+        @media (max-width: 768px) {
+            #floating-panel {
+                top: auto; left: 0; bottom: 0; width: 100%; max-height: 50vh;
+                border-radius: 16px 16px 0 0; border: none; border-top: 1px solid var(--border-color);
+                box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+            }
+            #floating-panel header { cursor: default; padding: 20px 20px 12px 20px; }
+            #prompt-form { padding: 20px; }
+            header h1 { font-size: 1.5rem; }
+            header .subtitle { font-size: 0.9rem; }
+            .input-section textarea { min-height: 100px; flex: 0 1 120px; }
+            #floating-panel.is-collapsed { max-height: 72px; overflow: hidden; }
+        }
+
+        /* Bouncing Ball Loader */
+        .loader-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            gap: 12px;
+        }
+        .loader-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: var(--accent-primary);
+            animation: bounce 0.6s infinite alternate;
+        }
+        .loader-dot:nth-child(2) { animation-delay: 0.2s; }
+        .loader-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-15px); }
+        }
+
+        /* D3.js Tree Styles */
+        .node circle {
+            fill: var(--accent-primary);
+            stroke: var(--bg-color);
+            stroke-width: 2px;
+        }
+        /* Root node text */
+        .node text {
+            font-size: 12px;
+            font-family: inherit;
+            fill: var(--text-secondary);
+        }
+        .node:hover text { fill: var(--text-primary); }
+        .node:hover circle { fill: var(--icon-color-2); cursor: pointer; }
+        
+        /* --- NEW: Make root node text more prominent --- */
+        .node text[data-depth="0"] {
+            font-size: 1.25rem;
+            font-weight: 600;
+            fill: var(--text-primary);
+        }
+        /* --- END NEW --- */
+
+        .link { 
+            fill: none; 
+            stroke: #444; 
+            stroke-width: 1.5px; 
+        }
+
+        /* Modal Window Styles */
+        #modal-overlay {
+            display: none; 
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #modal-content {
             background-color: var(--surface1-color);
-            border: 1px solid #333;
-            border-radius: 16px;
             padding: 24px;
-            text-align: left;
+            border-radius: 16px;
+            border: 1px solid #333;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
         }
-        .feature-icon { margin-bottom: 16px; }
-        .feature-icon svg { width: 32px; height: 32px; }
-        #icon-1 { color: var(--icon-color-1); }
-        #icon-2 { color: var(--icon-color-2); }
-        #icon-3 { color: var(--icon-color-3); }
-        .feature-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
-        .feature-card p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; }
-        @media (max-width: 640px) {
-            .features-section { flex-direction: column; }
+        #modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
         }
+        #modal-close:hover { color: var(--text-primary); }
+        #modal-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .modal-section { margin-bottom: 24px; }
+        .modal-section h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--icon-color-2);
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .problem { margin-bottom: 16px; }
+        .problem p { margin-bottom: 8px; font-size: 1.1rem; }
+        .problem .solution {
+            font-family: monospace;
+            background-color: var(--bg-color);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            font-size: 0.9rem;
+            white-space: pre-wrap; 
+        }
+        .video-link {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 8px;
+        }
+        .video-link:hover { color: var(--accent-primary); }
+        #modal-generate-more {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: var(--icon-color-2);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #modal-generate-more:hover { background-color: #4a94f7; }
+
     </style>
 </head>
 <body>
 
-    <div class="container">
-        
+    <main id="canvas-container">
+        <div id="tree-container"></div>
+    </main>
+
+    <aside id="floating-panel">
         <header>
-            <div class="logo-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9.243 2 7 4.243 7 7v2H4c-1.103 0-2 .897-2 2v2c0 1.103.897 2 2 2h3v2c0 2.757 2.243 5 5 5s5-2.243 5-5v-2h3c1.103 0 2-.897 2-2v-2c0-1.103-.897-2-2-2h-3V7c0-2.757-2.243-5-5-5zM9 7c0-1.654 1.346-3 3-3s3 1.346 3 3v2H9V7zm4 10c0 1.654-1.346 3-3 3s-3-1.346-3-3v-2h6v2zm2-6H7v-2h10v2z"></path></svg>
+            <div> 
+                <div class="logo-icon"></div>
+                <h1>Concept Visualizer</h1>
+                <p class="subtitle">Enter any topic to visualize it as an interactive map</p>
             </div>
-            <h1>Math Skill Tree</h1>
-            <p class="subtitle">Visualize any math concept as an interactive, explorable skill tree</p>
+            <button id="collapse-btn" aria-label="Collapse panel">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                </svg>
+            </button>
         </header>
 
-        <main>
-            <form id="prompt-form" action="tree.html" method="GET">
-                <section class="input-section">
-                    <label for="problem-input">Enter a math problem or test name</label>
-                    
-                    <textarea 
-                        id="problem-input"
-                        name="prompt" 
-                        placeholder="e.g., 'Find the derivative of x^2 + 3x' or 'Unit 2 test for AP Calc BC'"
-                    ></textarea>
-                    
-                    <button type="submit" id="generate-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V3m-4 18v-4a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v4m-4-6h18M3 12h2a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3H3m18 0h-2a3 3 0 0 1-3-3v0a3 3 0 0 1 3-3h2"></path></svg>
-                        <span>Generate Skill Tree</span>
-                    </button>
-                </section>
-            </form>
-
-            <section class="features-section">
-                <div class="feature-card">
-                    <div class="feature-icon" id="icon-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-2.67 19.4a1 1 0 0 0 1.1-.33a1 1 0 0 0 .34-1.16a7.89 7.89 0 0 1 .16-1.39a7.9 7.9 0 0 1 2.1-4.13a8 8 0 0 1 4.14-2.1a8.12 8.12 0 0 1 1.38-.16a1 1 0 0 0 1.16-.34a1 1 0 0 0 .33-1.1A10 10 0 0 0 12 2Zm-8.49 8.72A1 1 0 0 0 2.35 12a1 1 0 0 0 1.16.34a7.9 7.9 0 0 1 4.13 2.1a8 8 0 0 1 2.1 4.14a8.12 8.12 0 0 1 .16 1.38a1 1 0 0 0 .34 1.16a1 1 0 0 0 1.1.33A10 10 0 0 0 21.4 12.67a1 1 0 0 0-.33-1.1a1 1 0 0 0-1.16-.34a7.89 7.89 0 0 1-1.39.16a7.9 7.9 0 0 1-4.13-2.1a8 8 0 0 1-2.1-4.14a8.12 8.12 0 0 1-.16-1.38a1 1 0 0 0-.34-1.16a1 1 0 0 0-1.1-.33A10 10 0 0 0 3.51 10.72Z"></path></svg>
-                    </div>
-                    <h3>Interactive Nodes</h3>
-                    <p>Click any skill to explore practice problems</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon" id="icon-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m21.71 20.29l-3.4-3.39A7.92 7.92 0 0 0 19 11a8 8 0 1 0-8 8a7.92 7.92 0 0 0 5.9-2.69l3.39 3.4a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42ZM5 11a6 6 0 1 1 6 6a6 6 0 0 1-6-6Z"></path></svg>
-                    </div>
-                    <h3>Zoom & Pan</h3>
-                    <p>Navigate through complex skill hierarchies</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon" id="icon-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21.72 6.22a2 2 0 0 0-1.72-1.22H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.22a2 2 0 0 0-.28-1.07v-.01ZM18 17a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v8Zm-4.36-4.13a.5.5 0 0 1 0 .74l-3 2A.5.5 0 0 1 10 15.26V10.74a.5.5 0 0 1 .64-.43l3 2a.5.5 0 0 1 .36.43Z"></path></svg>
-                    </div>
-                    <h3>Video Tutorials</h3>
-                    <p>Access curated learning resources</p>
-                </div>
+        <form id="prompt-form">
+            <section class="input-section">
+                <label for="problem-input">Enter a topic or idea</label>
+                <textarea 
+                    id="problem-input"
+                    name="prompt" 
+                    placeholder="e.g., 'AP Calc BC' or 'History of the Roman Empire'"
+                ></textarea>
+                <button type="submit" id="generate-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.036a3.375 3.375 0 0 0 2.456 2.455L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"></path></svg>
+                    <span>Generate Map</span>
+                </button>
             </section>
-        </main>
+        </form>
+    </aside>
+    
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <button id="modal-close" title="Close">&times;</button>
+            <h2 id="modal-title">Skill Name</h2>
+            <div class="modal-section" id="practice-problems">
+                <h3>Practice Problems</h3>
+            </div>
+            <div class="modal-section" id="video-tutorials">
+                <h3>Video Tutorials</h3>
+            </div>
+            <div class="modal-section" id="generate-more">
+                <h3>Go Deeper</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                    Generate a new tree based on this specific skill.
+                </p>
+                <button id="modal-generate-more">Generate More Specifics</button>
+            </div>
+        </div>
     </div>
     
+    <script>
+        // --- MOCK DATABASES (unchanged) ---
+        const FAKE_SKILL_DB = {
+            "AP Calc BC": { "name": "AP Calc BC", "children": [ { "name": "Derivatives", "children": [] }, { "name": "Integrals", "children": [] }, { "name": "Limits", "children": [] } ] },
+            "Derivatives": { "name": "Derivatives", "children": [ { "name": "Power Rule", "children": [] }, { "name": "Product Rule", "children": [] }, { "name": "Quotient Rule", "children": [] }, { "name": "Chain Rule", "children": [] } ] },
+            "Integrals": { "name": "Integrals", "children": [ { "name": "Basic Antiderivatives", "children": [] }, { "name": "U-Substitution", "children": [] }, { "name": "Integration by Parts", "children": [] } ] },
+            "Power Rule": { "name": "Power Rule", "children": [ { "name": "Understanding Exponents", "children": [] }, { "name": "Finding d/dx of x^n", "children": [] } ] }
+        };
+        const FAKE_PROBLEM_DB = {
+            "Derivatives": {
+                problems: [ { q: "Find the derivative of f(x) = 5x³ + 2x - 1", s: "Use the Power Rule on each term:\n- d/dx(5x³) = 5 * 3x² = 15x²\n- d/dx(2x) = 2\n- d/dx(-1) = 0\nAnswer: f'(x) = 15x² + 2" } ],
+                videos: [ { title: "Introduction to Derivatives (Khan Academy)", url: "#" }, { title: "Calculus 1: Derivatives (3Blue1Brown)", url: "#" } ]
+            },
+            "Power Rule": {
+                problems: [
+                    { q: "What is the derivative of y = x⁷ ?", s: "Using the Power Rule, d/dx(xⁿ) = nxⁿ⁻¹\n- n = 7\n- d/dx(x⁷) = 7x⁷⁻¹\nAnswer: 7x⁶" },
+                    { q: "Find f'(x) for f(x) = 4√x", s: "First, rewrite √x as an exponent: f(x) = 4x¹/²\n- n = 1/2\n- f'(x) = 4 * (1/2)x^(¹/² - 1)\n- f'(x) = 2x⁻¹/²\nAnswer: 2 / √x" }
+                ],
+                videos: [ { title: "The Power Rule (Khan Academy)", url: "#" }, { title: "Examples of the Power Rule", url: "#" } ]
+            }
+        };
+
+        // --- All DOMContentLoaded listeners and functions (unchanged) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const panel = document.getElementById('floating-panel');
+            const collapseBtn = document.getElementById('collapse-btn');
+            const promptForm = document.getElementById('prompt-form');
+            const promptInput = document.getElementById('problem-input');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalClose = document.getElementById('modal-close');
+            const generateMoreBtn = document.getElementById('modal-generate-more');
+            let currentModalSkill = null;
+            const panelHeader = panel.querySelector('header');
+            let isDraggingPanel = false;
+            let startDragX, startDragY, startPanelX, startPanelY;
+            if (window.innerWidth > 768) {
+                panelHeader.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0 || e.target.closest('button, input, textarea, a, #collapse-btn')) return;
+                    isDraggingPanel = true;
+                    panel.style.userSelect = 'none';
+                    startDragX = e.clientX;
+                    startDragY = e.clientY;
+                    const rect = panel.getBoundingClientRect();
+                    startPanelX = rect.left;
+                    startPanelY = rect.top;
+                    document.addEventListener('mousemove', onPanelDrag);
+                    document.addEventListener('mouseup', onPanelDragEnd);
+                });
+            }
+            function onPanelDrag(e) {
+                if (!isDraggingPanel) return;
+                const deltaX = e.clientX - startDragX, deltaY = e.clientY - startDragY;
+                let newX = startPanelX + deltaX, newY = startPanelY + deltaY;
+                const vpWidth = window.innerWidth, vpHeight = window.innerHeight;
+                const pWidth = panel.offsetWidth, pHeight = panel.offsetHeight;
+                newX = Math.max(10, Math.min(newX, vpWidth - pWidth - 10));
+                newY = Math.max(10, Math.min(newY, vpHeight - pHeight - 10));
+                panel.style.left = newX + 'px';
+                panel.style.top = newY + 'px';
+                panel.style.right = 'auto';
+                panel.style.bottom = 'auto';
+            }
+            function onPanelDragEnd() {
+                isDraggingPanel = false;
+                panel.style.userSelect = 'auto';
+                document.removeEventListener('mousemove', onPanelDrag);
+                document.removeEventListener('mouseup', onPanelDragEnd);
+            }
+            collapseBtn.addEventListener('click', () => {
+                panel.classList.toggle('is-collapsed');
+            });
+            promptForm.addEventListener('submit', (e) => {
+                e.preventDefault(); 
+                const prompt = promptInput.value.trim();
+                if (prompt) {
+                    fetchAndDrawTree(prompt);
+                    if (!panel.classList.contains('is-collapsed')) {
+                        panel.classList.add('is-collapsed');
+                    }
+                }
+            });
+            modalClose.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) closeModal();
+            });
+            generateMoreBtn.addEventListener('click', () => {
+                if (currentModalSkill) {
+                    closeModal();
+                    fetchAndDrawTree(currentModalSkill);
+                    promptInput.value = currentModalSkill;
+                }
+            });
+
+        });
+
+        // --- fetchAndDrawTree (unchanged) ---
+        async function fetchAndDrawTree(prompt) {
+            const treeContainer = document.getElementById('tree-container');
+            treeContainer.innerHTML = `
+                <div class="loader-container">
+                    <div class="loader-dot"></div>
+                    <div class="loader-dot"></div>
+                    <div class="loader-dot"></div>
+                </div>
+            `;
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            const skillTreeData = FAKE_SKILL_DB[prompt] || FAKE_SKILL_DB["AP Calc BC"];
+            drawTree(skillTreeData);
+        }
+
+        // --- openModal and closeModal (unchanged) ---
+        function openModal(nodeData) {
+            currentModalSkill = nodeData.name;
+            document.getElementById('modal-title').textContent = nodeData.name;
+            const skillContent = FAKE_PROBLEM_DB[nodeData.name];
+            const problemsContainer = document.getElementById('practice-problems');
+            const videosContainer = document.getElementById('video-tutorials');
+            problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
+            videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
+
+            if (skillContent) {
+                skillContent.problems.forEach(prob => {
+                    const el = document.createElement('div');
+                    el.className = 'problem';
+                    el.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
+                    problemsContainer.appendChild(el);
+                });
+                skillContent.videos.forEach(vid => {
+                    const el = document.createElement('a');
+                    el.className = 'video-link';
+                    el.href = vid.url;
+                    el.target = '_blank';
+                    el.textContent = `▶ ${vid.title}`;
+                    videosContainer.appendChild(el);
+                });
+            } else {
+                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found.</p>';
+                videosContainer.innerHTML += '<p style="color: var(--text-secondary);">No videos found.</p>';
+            }
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            currentModalSkill = null;
+        }
+
+        // --- MODIFIED: drawTree function ---
+        /**
+         * D3.js function to draw the tree with animations.
+         */
+        function drawTree(data) {
+            const treeContainer = document.getElementById('tree-container');
+            treeContainer.innerHTML = ''; // Clear loader
+
+            const width = treeContainer.clientWidth;
+            const height = treeContainer.clientHeight;
+            const margin = { top: 30, right: 120, bottom: 30, left: 120 };
+            
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+
+            const svg = d3.select("#tree-container")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", [0, 0, width, height]);
+
+            const svgGroup = svg.append("g")
+                .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+            const treeLayout = d3.tree().size([innerHeight, innerWidth]);
+            const root = d3.hierarchy(data);
+            treeLayout(root);
+
+            // Zoom behavior (unchanged)
+            const treeContainerD3 = d3.select("#tree-container");
+            const baseDotSize = 20; 
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 3])
+                .on("zoom", (event) => {
+                    const { x, y, k } = event.transform;
+                    svgGroup.attr("transform", event.transform);
+                    const newDotSize = baseDotSize * k;
+                    treeContainerD3.style("background-size", `${newDotSize}px ${newDotSize}px`);
+                    treeContainerD3.style("background-position", `${x}px ${y}px`);
+                });
+            svg.call(zoom);
+
+
+            // --- MODIFICATION: Link Animation ---
+            // Draw Links
+            svgGroup.selectAll('.link')
+                .data(root.links())
+                .enter().append('path')
+                .attr('class', 'link')
+                .attr('d', d3.linkHorizontal().x(d => d.y).y(d => d.x))
+                // Get length of path
+                .style("stroke-dasharray", function() { return this.getTotalLength(); })
+                // Start with dash "hidden"
+                .style("stroke-dashoffset", function() { return this.getTotalLength(); })
+                .transition()
+                .duration(800)
+                // Stagger animation to start after source node starts fading in
+                .delay(d => d.source.depth * 500 + 200) 
+                .style("stroke-dashoffset", 0); // Animate dash to "draw" it
+
+            // --- MODIFICATION: Node Animation ---
+            // Draw Nodes
+            const node = svgGroup.selectAll('.node')
+                .data(root.descendants())
+                .enter().append('g')
+                .attr('class', 'node')
+                .attr('transform', d => `translate(${d.y},${d.x})`)
+                .style("opacity", 0); // Start invisible
+
+            // Make root node circle bigger
+            node.append('circle')
+                .attr('r', d => (d.depth === 0 ? 10 : 6)); 
+
+            // Make root node text bigger and position it
+            node.append('text')
+                .text(d => d.data.name)
+                // Add data-depth attribute to target with CSS
+                .attr('data-depth', d => d.depth) 
+                 // Position root text above circle, others to the side
+                .attr('dy', d => (d.depth === 0 ? '-1.5em' : '0.35em'))
+                // Center root text, others left/right
+                .attr('x', d => (d.depth === 0 ? 0 : (d.children ? -10 : 10)))
+                .style('text-anchor', d => (d.depth === 0 ? 'middle' : (d.children ? 'end' : 'start')));
+
+            // Click handler (unchanged)
+            node.on('click', (event, d) => {
+                openModal(d.data); 
+            });
+            
+            // Staggered fade-in transition for nodes
+            node.transition()
+                .duration(500)
+                .delay(d => d.depth * 500) // Root fades at 0ms, children at 500ms, etc.
+                .style("opacity", 1);
+            
+            // Center the tree on initial load
+            svg.call(zoom.transform, d3.zoomIdentity.translate(margin.left, height / 2).scale(1));
+        }
+
+    </script>
+
 </body>
 </html>
