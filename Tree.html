@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Skill Tree</title>
+    
+    <style>
+        :root {
+            --bg-color: #101010;
+            --surface1-color: #1e1e1e;
+            --text-primary: #f0f0f0;
+            --text-secondary: #a0a0a0;
+            --accent-primary: #e0e0e0;
+            --icon-color-2: #3b82f6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow: hidden; /* Prevents scrolling on the body */
+        }
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* --- Header for this page --- */
+        .page-header {
+            padding: 16px 24px;
+            background-color: var(--surface1-color);
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .back-button {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+        .back-button:hover { background-color: #333; }
+        .page-header h1 {
+            font-size: 1.25rem;
+            font-weight: 500;
+        }
+        .page-header h1 strong {
+            font-weight: 700;
+            color: var(--icon-color-2);
+        }
+
+        /* --- Tree Visualization Section --- */
+        #tree-container {
+            flex-grow: 1; /* Takes up all remaining space */
+            position: relative;
+            background-color: var(--bg-color);
+        }
+        .loading-message {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* D3.js Tree Styles */
+        .node circle {
+            fill: var(--accent-primary);
+            stroke: var(--bg-color);
+            stroke-width: 2px;
+        }
+        .node text {
+            font-size: 12px;
+            font-family: inherit;
+            fill: var(--text-secondary);
+        }
+        .node:hover text { fill: var(--text-primary); }
+        .node:hover circle { fill: var(--icon-color-2); cursor: pointer; }
+        .link { fill: none; stroke: #444; stroke-width: 1.5px; }
+
+        /* --- Modal Window Styles --- */
+        #modal-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #modal-content {
+            background-color: var(--surface1-color);
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid #333;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        #modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        #modal-close:hover { color: var(--text-primary); }
+        #modal-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        /* Modal Content Styles */
+        .modal-section { margin-bottom: 24px; }
+        .modal-section h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--icon-color-2);
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .problem { margin-bottom: 16px; }
+        .problem p { margin-bottom: 8px; font-size: 1.1rem; }
+        .problem .solution {
+            font-family: monospace;
+            background-color: var(--bg-color);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            font-size: 0.9rem;
+            white-space: pre-wrap; /* Preserves line breaks */
+        }
+        .video-link {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 8px;
+        }
+        .video-link:hover { color: var(--accent-primary); }
+        
+        /* "Generate More" Button */
+        #modal-generate-more {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: var(--icon-color-2);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #modal-generate-more:hover { background-color: #4a94f7; }
+
+    </style>
+</head>
+<body>
+
+    <div class="page-container">
+        <header class="page-header">
+            <a href="index.html" class="back-button" title="Back to Home">&larr;</a>
+            <h1>Skill Tree for: <strong id="prompt-title">...</strong></h1>
+        </header>
+        
+        <main id="tree-container">
+            </main>
+    </div>
+
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <button id="modal-close" title="Close">&times;</button>
+            <h2 id="modal-title">Skill Name</h2>
+            
+            <div class="modal-section" id="practice-problems">
+                <h3>Practice Problems</h3>
+                </div>
+
+            <div class="modal-section" id="video-tutorials">
+                <h3>Video Tutorials</h3>
+                </div>
+
+            <div class="modal-section" id="generate-more">
+                <h3>Go Deeper</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                    Generate a new tree based on this specific skill.
+                </p>
+                <button id="modal-generate-more">Generate More Specifics</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <script>
+        
+        // --- MOCK DATABASE ---
+        // This simulates your backend. The AI would generate this data.
+        const FAKE_SKILL_DB = {
+            // Top-level skills
+            "AP Calc BC": {
+                "name": "AP Calc BC",
+                "children": [
+                    { "name": "Derivatives", "children": [] }, // We only show the first subset
+                    { "name": "Integrals", "children": [] },
+                    { "name": "Limits", "children": [] }
+                ]
+            },
+            // Second-level skills
+            "Derivatives": {
+                "name": "Derivatives",
+                "children": [
+                    { "name": "Power Rule", "children": [] },
+                    { "name": "Product Rule", "children": [] },
+                    { "name": "Quotient Rule", "children": [] },
+                    { "name": "Chain Rule", "children": [] }
+                ]
+            },
+            "Integrals": {
+                "name": "Integrals",
+                "children": [
+                    { "name": "Basic Antiderivatives", "children": [] },
+                    { "name": "U-Substitution", "children": [] },
+                    { "name": "Integration by Parts", "children": [] }
+                ]
+            },
+            "Power Rule": {
+                "name": "Power Rule",
+                "children": [
+                    { "name": "Understanding Exponents", "children": [] },
+                    { "name": "Finding d/dx of x^n", "children": [] }
+                ]
+            }
+            // ... and so on
+        };
+
+        const FAKE_PROBLEM_DB = {
+            "Derivatives": {
+                problems: [
+                    { 
+                        q: "Find the derivative of f(x) = 5x³ + 2x - 1",
+                        s: "Use the Power Rule on each term:\n- d/dx(5x³) = 5 * 3x² = 15x²\n- d/dx(2x) = 2\n- d/dx(-1) = 0\nAnswer: f'(x) = 15x² + 2"
+                    }
+                ],
+                videos: [
+                    { title: "Introduction to Derivatives (Khan Academy)", url: "#" },
+                    { title: "Calculus 1: Derivatives (3Blue1Brown)", url: "#" }
+                ]
+            },
+            "Power Rule": {
+                problems: [
+                    { 
+                        q: "What is the derivative of y = x⁷ ?",
+                        s: "Using the Power Rule, d/dx(xⁿ) = nxⁿ⁻¹\n- n = 7\n- d/dx(x⁷) = 7x⁷⁻¹\nAnswer: 7x⁶"
+                    },
+                    { 
+                        q: "Find f'(x) for f(x) = 4√x",
+                        s: "First, rewrite √x as an exponent: f(x) = 4x¹/²\n- n = 1/2\n- f'(x) = 4 * (1/2)x^(¹/² - 1)\n- f'(x) = 2x⁻¹/²\nAnswer: 2 / √x"
+                    }
+                ],
+                videos: [
+                    { title: "The Power Rule (Khan Academy)", url: "#" },
+                    { title: "Examples of the Power Rule", url: "#" }
+                ]
+            }
+            // ... and so on
+        };
+        // --- END MOCK DATABASE ---
+
+
+        // Global variables for the modal
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+        const modalClose = document.getElementById('modal-close');
+        const modalTitle = document.getElementById('modal-title');
+        const problemsContainer = document.getElementById('practice-problems');
+        const videosContainer = document.getElementById('video-tutorials');
+        const generateMoreBtn = document.getElementById('modal-generate-more');
+        let currentModalSkill = null; // Store what skill is being shown
+
+
+        /**
+         * Runs when the page loads.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Get the user's prompt from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const prompt = urlParams.get('prompt') || "AP Calc BC"; // Default to "AP Calc BC"
+            
+            // 2. Set the page title
+            document.getElementById('prompt-title').textContent = `"${prompt}"`;
+
+            // 3. Fetch and draw the tree
+            fetchAndDrawTree(prompt);
+            
+            // 4. Set up modal close buttons
+            modalClose.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    closeModal();
+                }
+            });
+            
+            // 5. Set up the "Generate More" button
+            generateMoreBtn.addEventListener('click', () => {
+                if (currentModalSkill) {
+                    closeModal();
+                    // This re-runs the entire process for the new, more specific skill
+                    fetchAndDrawTree(currentModalSkill);
+                }
+            });
+        });
+
+        /**
+         * Fetches the skill tree (from our FAKE_SKILL_DB) and draws it.
+         */
+        async function fetchAndDrawTree(prompt) {
+            const treeContainer = document.getElementById('tree-container');
+            treeContainer.innerHTML = `<p class="loading-message">Generating skill tree for "${prompt}"...</p>`;
+            
+            // --- FAKE BACKEND CALL ---
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate loading
+            
+            // Find the data in our fake DB, or default to the first entry
+            const skillTreeData = FAKE_SKILL_DB[prompt] || FAKE_SKILL_DB["AP Calc BC"];
+            // --- END FAKE CALL ---
+
+            // Now that we have data, draw the tree
+            drawTree(skillTreeData);
+        }
+
+        /**
+         * Opens the modal window and populates it with content.
+         */
+        function openModal(nodeData) {
+            currentModalSkill = nodeData.name; // Save the skill name
+            
+            // 1. Set title
+            modalTitle.textContent = nodeData.name;
+            
+            // 2. Fetch and show practice problems (from FAKE_PROBLEM_DB)
+            const skillContent = FAKE_PROBLEM_DB[nodeData.name];
+            
+            // Clear old content
+            problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
+            videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
+
+            if (skillContent) {
+                // Populate Problems
+                skillContent.problems.forEach(prob => {
+                    const problemEl = document.createElement('div');
+                    problemEl.className = 'problem';
+                    problemEl.innerHTML = `
+                        <p>${prob.q}</p>
+                        <div class="solution">${prob.s}</div>
+                    `;
+                    problemsContainer.appendChild(problemEl);
+                });
+                
+                // Populate Videos
+                skillContent.videos.forEach(vid => {
+                    const videoEl = document.createElement('a');
+                    videoEl.className = 'video-link';
+                    videoEl.href = vid.url;
+                    videoEl.target = '_blank';
+                    videoEl.textContent = `▶ ${vid.title}`;
+                    videosContainer.appendChild(videoEl);
+                });
+            } else {
+                // No content found
+                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found for this skill.</p>';
+                videosContainer.innerHTML += '<p style="color: var(--text-secondary);">No videos found for this skill.</p>';
+            }
+
+            // 3. Show the modal
+            modalOverlay.style.display = 'flex';
+        }
+
+        /**
+         * Closes the modal window.
+         */
+        function closeModal() {
+            modalOverlay.style.display = 'none';
+            currentModalSkill = null; // Clear the saved skill
+        }
+
+        /**
+         * D3.js function to draw the tree.
+         */
+        function drawTree(data) {
+            const treeContainer = document.getElementById('tree-container');
+            treeContainer.innerHTML = ''; // Clear loading message
+
+            const width = treeContainer.clientWidth;
+            const height = treeContainer.clientHeight;
+            const margin = { top: 30, right: 120, bottom: 30, left: 120 };
+            
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+
+            const svg = d3.select("#tree-container")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", [0, 0, width, height]);
+
+            const svgGroup = svg.append("g")
+                .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+            const treeLayout = d3.tree().size([innerHeight, innerWidth]);
+            const root = d3.hierarchy(data);
+            treeLayout(root);
+
+            // Zoom behavior
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 3])
+                .on("zoom", (event) => {
+                    svgGroup.attr("transform", event.transform);
+                });
+            svg.call(zoom);
+
+            // Draw Links
+            svgGroup.selectAll('.link')
+                .data(root.links())
+                .enter().append('path')
+                .attr('class', 'link')
+                .attr('d', d3.linkHorizontal().x(d => d.y).y(d => d.x));
+
+            // Draw Nodes
+            const node = svgGroup.selectAll('.node')
+                .data(root.descendants())
+                .enter().append('g')
+                .attr('class', 'node')
+                .attr('transform', d => `translate(${d.y},${d.x})`);
+
+            node.append('circle').attr('r', 6);
+
+            node.append('text')
+                .text(d => d.data.name)
+                .attr('dy', '0.35em')
+                .attr('x', d => (d.children || d._children) ? -10 : 10)
+                .style('text-anchor', d => (d.children || d._children) ? 'end' : 'start');
+
+            // --- THIS IS THE NEW CLICK HANDLER ---
+            // It now calls openModal instead of zooming.
+            node.on('click', (event, d) => {
+                openModal(d.data); // 'd.data' is the original JSON object for that node
+            });
+            
+            // Center the tree on initial load
+            svg.call(zoom.transform, d3.zoomIdentity.translate(margin.left, height / 2).scale(1));
+        }
+
+    </script>
+
+</body>
+</html>
