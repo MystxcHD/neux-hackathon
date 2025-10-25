@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Concept Visualizer</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     
     <style>
-        /* All CSS is identical to the previous version */
         :root {
             --bg-color: #101010;
             --surface1-color: #1e1e1e;
@@ -18,6 +17,7 @@
             --border-color: #333;
             --dot-color: #3a3a3a;
             --icon-color-2: #3b82f6; 
+            --label-bg: rgba(30, 30, 30, 0.75);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -40,9 +40,22 @@
             width: 100%;
             height: 100%;
             position: relative;
+            /* Dotted background from D3 file */
             background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
             background-size: 20px 20px;
             background-position: center;
+        }
+
+        /* Initial placeholder text */
+        #tree-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            text-align: center;
+            z-index: 5;
         }
 
         /* Floating panel */
@@ -137,6 +150,7 @@
             transform: translate(-50%, -50%);
             display: flex;
             gap: 12px;
+            z-index: 5;
         }
         .loader-dot {
             width: 16px;
@@ -153,36 +167,7 @@
             to { transform: translateY(-15px); }
         }
 
-        /* D3.js Tree Styles */
-        .node circle {
-            fill: var(--accent-primary);
-            stroke: var(--bg-color);
-            stroke-width: 2px;
-        }
-        /* Root node text */
-        .node text {
-            font-size: 12px;
-            font-family: inherit;
-            fill: var(--text-secondary);
-        }
-        .node:hover text { fill: var(--text-primary); }
-        .node:hover circle { fill: var(--icon-color-2); cursor: pointer; }
-        
-        /* --- NEW: Make root node text more prominent --- */
-        .node text[data-depth="0"] {
-            font-size: 1.25rem;
-            font-weight: 600;
-            fill: var(--text-primary);
-        }
-        /* --- END NEW --- */
-
-        .link { 
-            fill: none; 
-            stroke: #444; 
-            stroke-width: 1.5px; 
-        }
-
-        /* Modal Window Styles */
+        /* Modal Window Styles (From D3 File) */
         #modal-overlay {
             display: none; 
             position: fixed;
@@ -269,7 +254,11 @@
 <body>
 
     <main id="canvas-container">
-        <div id="tree-container"></div>
+        <div id="tree-container">
+            <div id="tree-placeholder">
+                <p>Enter a topic in the panel to generate a map</p>
+            </div>
+        </div>
     </main>
 
     <aside id="floating-panel">
@@ -281,7 +270,7 @@
             </div>
             <button id="collapse-btn" aria-label="Collapse panel">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
                 </svg>
             </button>
         </header>
@@ -296,7 +285,7 @@
                 ></textarea>
                 <button type="submit" id="generate-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.036a3.375 3.375 0 0 0 2.456 2.455L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"></path></svg>
-                    <span>Generate Map</span>
+                    Generate Map
                 </button>
             </section>
         </form>
@@ -323,28 +312,39 @@
     </div>
     
     <script>
-        // --- MOCK DATABASES (unchanged) ---
+        // --- MOCK DATABASES (Using ECharts versions) ---
         const FAKE_SKILL_DB = {
-            "AP Calc BC": { "name": "AP Calc BC", "children": [ { "name": "Derivatives", "children": [] }, { "name": "Integrals", "children": [] }, { "name": "Limits", "children": [] } ] },
-            "Derivatives": { "name": "Derivatives", "children": [ { "name": "Power Rule", "children": [] }, { "name": "Product Rule", "children": [] }, { "name": "Quotient Rule", "children": [] }, { "name": "Chain Rule", "children": [] } ] },
-            "Integrals": { "name": "Integrals", "children": [ { "name": "Basic Antiderivatives", "children": [] }, { "name": "U-Substitution", "children": [] }, { "name": "Integration by Parts", "children": [] } ] },
-            "Power Rule": { "name": "Power Rule", "children": [ { "name": "Understanding Exponents", "children": [] }, { "name": "Finding d/dx of x^n", "children": [] } ] }
-        };
-        const FAKE_PROBLEM_DB = {
-            "Derivatives": {
-                problems: [ { q: "Find the derivative of f(x) = 5x³ + 2x - 1", s: "Use the Power Rule on each term:\n- d/dx(5x³) = 5 * 3x² = 15x²\n- d/dx(2x) = 2\n- d/dx(-1) = 0\nAnswer: f'(x) = 15x² + 2" } ],
-                videos: [ { title: "Introduction to Derivatives (Khan Academy)", url: "#" }, { title: "Calculus 1: Derivatives (3Blue1Brown)", url: "#" } ]
-            },
-            "Power Rule": {
-                problems: [
-                    { q: "What is the derivative of y = x⁷ ?", s: "Using the Power Rule, d/dx(xⁿ) = nxⁿ⁻¹\n- n = 7\n- d/dx(x⁷) = 7x⁷⁻¹\nAnswer: 7x⁶" },
-                    { q: "Find f'(x) for f(x) = 4√x", s: "First, rewrite √x as an exponent: f(x) = 4x¹/²\n- n = 1/2\n- f'(x) = 4 * (1/2)x^(¹/² - 1)\n- f'(x) = 2x⁻¹/²\nAnswer: 2 / √x" }
-                ],
-                videos: [ { title: "The Power Rule (Khan Academy)", url: "#" }, { title: "Examples of the Power Rule", url: "#" } ]
-            }
+            "AP Calc BC": { "name": "AP Calc BC", "children": [ { "name": "Derivatives" }, { "name": "Integrals" }, { "name": "Limits" } ] },
+            "Derivatives": { "name": "Derivatives", "children": [ { "name": "Power Rule" }, { "name": "Product Rule" }, { "name": "Quotient Rule" }, { "name": "Chain Rule" } ] },
+            "Integrals": { "name": "Integrals", "children": [ { "name": "Basic Antiderivatives" }, { "name": "U-Substitution" }, { "name": "Integration by Parts" } ] },
+            "Power Rule": { "name": "Power Rule", "children": [ { "name": "Understanding Exponents" }, { "name": "Finding d/dx of x^n" } ] },
+            "Limits": { "name": "Limits", "children": [ { "name": "One-Sided Limits" }, { "name": "Limits at Infinity" } ] },
+            "Chain Rule": { "name": "Chain Rule", "children": [ { "name":"Composite Functions" }, { "name": "Implicit Differentiation" } ] },
+            "Understanding Exponents": { "name": "Understanding Exponents", "children": [ { "name": "Integer Exponents" }, { "name": "Rational Exponents" } ] },
+            "Composite Functions": { "name": "Composite Functions", "children": [ { "name": "Definition of Composite Functions" }, { "name":"Evaluating Composite Functions" } ] }
         };
 
-        // --- All DOMContentLoaded listeners and functions (unchanged) ---
+        const FAKE_PROBLEM_DB = {
+            "Derivatives": {
+                problems: [ { q: "Find the derivative of f(x) = 5x³ + 2x - 1", s: "f'(x) = 15x² + 2" } ],
+                videos: [ { title: "Introduction to Derivatives (Khan Academy)", url: "#" } ]
+            },
+            "Power Rule": {
+                problems: [ { q: "What is the derivative of y = x⁷ ?", s: "y' = 7x⁶" }, { q: "Find f'(x) for f(x) = 4√x", s: "f'(x) = 2 / √x" } ],
+                videos: [ { title: "The Power Rule (Khan Academy)", url: "#" } ]
+            },
+            "Understanding Exponents": {
+                problems: [ { q: "Simplify x^2 * x^3", s: "x^(2+3) = x^5" }, { q: "Simplify (y^4)^2", s: "y^(4*2) = y^8" } ],
+                videos: [ { title: "Laws of Exponents (Math Antics)", url: "#" } ]
+            }
+        };
+        // --- END MOCK DATABASES ---
+
+        
+        // --- Panel/Modal Logic (From D3 File) ---
+        let currentModalSkill = null;
+        let myChart = null; // Keep a reference to the chart instance
+
         document.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('floating-panel');
             const collapseBtn = document.getElementById('collapse-btn');
@@ -353,8 +353,18 @@
             const modalOverlay = document.getElementById('modal-overlay');
             const modalClose = document.getElementById('modal-close');
             const generateMoreBtn = document.getElementById('modal-generate-more');
-            let currentModalSkill = null;
             const panelHeader = panel.querySelector('header');
+            
+            // --- Form Submit Handler ---
+            promptForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const prompt = promptInput.value.trim();
+                if (prompt) {
+                    fetchAndDrawTree(prompt);
+                }
+            });
+
+            // --- Panel Dragging Logic ---
             let isDraggingPanel = false;
             let startDragX, startDragY, startPanelX, startPanelY;
             if (window.innerWidth > 768) {
@@ -390,19 +400,13 @@
                 document.removeEventListener('mousemove', onPanelDrag);
                 document.removeEventListener('mouseup', onPanelDragEnd);
             }
+
+            // --- Panel Collapse ---
             collapseBtn.addEventListener('click', () => {
                 panel.classList.toggle('is-collapsed');
             });
-            promptForm.addEventListener('submit', (e) => {
-                e.preventDefault(); 
-                const prompt = promptInput.value.trim();
-                if (prompt) {
-                    fetchAndDrawTree(prompt);
-                    if (!panel.classList.contains('is-collapsed')) {
-                        panel.classList.add('is-collapsed');
-                    }
-                }
-            });
+            
+            // --- Modal Listeners ---
             modalClose.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', (e) => {
                 if (e.target === modalOverlay) closeModal();
@@ -414,12 +418,12 @@
                     promptInput.value = currentModalSkill;
                 }
             });
-
         });
 
-        // --- fetchAndDrawTree (unchanged) ---
+        // --- Tree Generation Logic ---
         async function fetchAndDrawTree(prompt) {
             const treeContainer = document.getElementById('tree-container');
+            // Show loader
             treeContainer.innerHTML = `
                 <div class="loader-container">
                     <div class="loader-dot"></div>
@@ -427,12 +431,21 @@
                     <div class="loader-dot"></div>
                 </div>
             `;
+            
+            // Fake API delay
             await new Promise(resolve => setTimeout(resolve, 1000)); 
-            const skillTreeData = FAKE_SKILL_DB[prompt] || FAKE_SKILL_DB["AP Calc BC"];
-            drawTree(skillTreeData);
+            
+            // Check if prompt exists, default to "AP Calc BC"
+            const rootSkillName = FAKE_SKILL_DB[prompt] ? prompt : "AP Calc BC";
+            
+            // Build the tree data using the ECharts function
+            const initialData = buildFullTree(rootSkillName); 
+            
+            // Draw the ECharts tree
+            drawEChartTree(initialData);
         }
 
-        // --- openModal and closeModal (unchanged) ---
+        // --- Modal Functions (From D3 File) ---
         function openModal(nodeData) {
             currentModalSkill = nodeData.name;
             document.getElementById('modal-title').textContent = nodeData.name;
@@ -442,14 +455,19 @@
             problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
             videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
 
-            if (skillContent) {
+            if (skillContent && skillContent.problems) {
                 skillContent.problems.forEach(prob => {
                     const el = document.createElement('div');
                     el.className = 'problem';
                     el.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
                     problemsContainer.appendChild(el);
                 });
-                skillContent.videos.forEach(vid => {
+            } else {
+                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found.</p>';
+            }
+            
+            if (skillContent && skillContent.videos) {
+                 skillContent.videos.forEach(vid => {
                     const el = document.createElement('a');
                     el.className = 'video-link';
                     el.href = vid.url;
@@ -458,9 +476,9 @@
                     videosContainer.appendChild(el);
                 });
             } else {
-                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found.</p>';
                 videosContainer.innerHTML += '<p style="color: var(--text-secondary);">No videos found.</p>';
             }
+            
             document.getElementById('modal-overlay').style.display = 'flex';
         }
         function closeModal() {
@@ -468,105 +486,137 @@
             currentModalSkill = null;
         }
 
-        // --- MODIFIED: drawTree function ---
-        /**
-         * D3.js function to draw the tree with animations.
-         */
-        function drawTree(data) {
-            const treeContainer = document.getElementById('tree-container');
-            treeContainer.innerHTML = ''; // Clear loader
-
-            const width = treeContainer.clientWidth;
-            const height = treeContainer.clientHeight;
-            const margin = { top: 30, right: 120, bottom: 30, left: 120 };
+        // --- ECHARTS DATA PREP FUNCTION ---
+        function buildFullTree(skillName) {
+            const nodeData = FAKE_SKILL_DB[skillName];
+            if (!nodeData) {
+                return { name: skillName, children: [] };  
+            }
             
-            const innerWidth = width - margin.left - margin.right;
-            const innerHeight = height - margin.top - margin.bottom;
-
-            const svg = d3.select("#tree-container")
-                .append("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .attr("viewBox", [0, 0, width, height]);
-
-            const svgGroup = svg.append("g")
-                .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
-            const treeLayout = d3.tree().size([innerHeight, innerWidth]);
-            const root = d3.hierarchy(data);
-            treeLayout(root);
-
-            // Zoom behavior (unchanged)
-            const treeContainerD3 = d3.select("#tree-container");
-            const baseDotSize = 20; 
-            const zoom = d3.zoom()
-                .scaleExtent([0.1, 3])
-                .on("zoom", (event) => {
-                    const { x, y, k } = event.transform;
-                    svgGroup.attr("transform", event.transform);
-                    const newDotSize = baseDotSize * k;
-                    treeContainerD3.style("background-size", `${newDotSize}px ${newDotSize}px`);
-                    treeContainerD3.style("background-position", `${x}px ${y}px`);
-                });
-            svg.call(zoom);
-
-
-            // --- MODIFICATION: Link Animation ---
-            // Draw Links
-            svgGroup.selectAll('.link')
-                .data(root.links())
-                .enter().append('path')
-                .attr('class', 'link')
-                .attr('d', d3.linkHorizontal().x(d => d.y).y(d => d.x))
-                // Get length of path
-                .style("stroke-dasharray", function() { return this.getTotalLength(); })
-                // Start with dash "hidden"
-                .style("stroke-dashoffset", function() { return this.getTotalLength(); })
-                .transition()
-                .duration(800)
-                // Stagger animation to start after source node starts fading in
-                .delay(d => d.source.depth * 500 + 200) 
-                .style("stroke-dashoffset", 0); // Animate dash to "draw" it
-
-            // --- MODIFICATION: Node Animation ---
-            // Draw Nodes
-            const node = svgGroup.selectAll('.node')
-                .data(root.descendants())
-                .enter().append('g')
-                .attr('class', 'node')
-                .attr('transform', d => `translate(${d.y},${d.x})`)
-                .style("opacity", 0); // Start invisible
-
-            // Make root node circle bigger
-            node.append('circle')
-                .attr('r', d => (d.depth === 0 ? 10 : 6)); 
-
-            // Make root node text bigger and position it
-            node.append('text')
-                .text(d => d.data.name)
-                // Add data-depth attribute to target with CSS
-                .attr('data-depth', d => d.depth) 
-                 // Position root text above circle, others to the side
-                .attr('dy', d => (d.depth === 0 ? '-1.5em' : '0.35em'))
-                // Center root text, others left/right
-                .attr('x', d => (d.depth === 0 ? 0 : (d.children ? -10 : 10)))
-                .style('text-anchor', d => (d.depth === 0 ? 'middle' : (d.children ? 'end' : 'start')));
-
-            // Click handler (unchanged)
-            node.on('click', (event, d) => {
-                openModal(d.data); 
-            });
+            let newNode = { name: nodeData.name };  
+            if (nodeData.children && nodeData.children.length > 0) {
+                newNode.children = nodeData.children.map(child => buildFullTree(child.name));
+            } else {
+                newNode.children = [];  
+            }
             
-            // Staggered fade-in transition for nodes
-            node.transition()
-                .duration(500)
-                .delay(d => d.depth * 500) // Root fades at 0ms, children at 500ms, etc.
-                .style("opacity", 1);
-            
-            // Center the tree on initial load
-            svg.call(zoom.transform, d3.zoomIdentity.translate(margin.left, height / 2).scale(1));
+            return newNode;
         }
 
+        // --- ECHARTS DRAWING FUNCTION ---
+        const animationDuration = 500;  
+        function drawEChartTree(data) {
+            const treeContainer = document.getElementById('tree-container');
+            treeContainer.innerHTML = ''; // Clear loader
+            
+            // Dispose of old chart instance if it exists
+            if (myChart) {
+                myChart.dispose();
+            }
+            myChart = echarts.init(treeContainer, null, { renderer: 'canvas' });  
+
+            let treeDepth = 0;  
+
+            if (data.children && data.children.length > 0) {
+                data.symbolSize = 1;
+                treeDepth = 1; 
+            }
+
+            const chartOptions = {
+                backgroundColor: 'transparent', // Let the CSS background show
+                tooltip: {
+                    trigger: 'item',
+                    triggerOn: 'mousemove',
+                    backgroundColor: 'rgba(30, 30, 30, 0.9)',  
+                    borderColor: '#555',
+                    borderWidth: 1,
+                    textStyle: { color: '#f0f0f0' }
+                },
+                series: [
+                    {
+                        type: 'tree',
+                        data: [data],  
+                        layout: 'radial',  
+                        roam: true,  
+                        expandAndCollapse: true,
+                        animationDuration: animationDuration,  
+                        initialTreeDepth: treeDepth,  
+                        symbol: 'circle',
+                        symbolSize: 1, 
+                        label: { 
+                            show: true,  
+                            position: 'auto',  
+                            verticalAlign: 'middle',
+                            align: 'auto',  
+                            fontSize: 14, 
+                            color: '#f0f0f0', 
+                            triggerEvent: true,  
+                            rotate: 0,  
+                            backgroundColor: 'rgba(30, 30, 30, 0.75)',  
+                            padding: [4, 7],  
+                            borderRadius: 4, 
+                            emphasis: { 
+                                color: '#ffffff',
+                                focus: 'ancestor' 
+                            }
+                        },
+                        lineStyle: { 
+                            color: '#a0a0a0',  
+                            width: 1.5,  
+                            curveness: 0.5,
+                            opacity: 0.9  
+                        },
+                        leaves: { 
+                            label: {
+                                show: true,  
+                                color: '#f0f0f0', 
+                                backgroundColor: 'rgba(30, 30, 30, 0.75)',  
+                                padding: [4, 7],  
+                                borderRadius: 4,
+                                emphasis: { 
+                                    color: '#ffffff',
+                                    focus: 'ancestor' 
+                                }
+                            },
+                            itemStyle: { 
+                                color: '#1e1e1e', 
+                                borderColor: '#a0a0a0',
+                                borderWidth: 1.5  
+                            }
+                        },
+                        itemStyle: { 
+                            color: '#666', 
+                            borderColor: '#3b82f6',
+                            borderWidth: 1.5,
+                            opacity: 1  
+                        }
+                    }
+                ]
+            };
+
+            myChart.setOption(chartOptions);
+
+            // --- Click Handler ---
+            // This will call the GLOBAL openModal function
+            myChart.on('click', (params) => {
+                if (params.componentType === 'series' && params.componentSubType === 'tree') {
+                    const nodeData = params.data;
+                    
+                    if (nodeData.children && nodeData.children.length === 0) {
+                        openModal(nodeData);
+                    } else if (!nodeData.children) {
+                        openModal(nodeData);
+                    }
+                }
+            });
+
+            // Make the chart responsive
+            window.addEventListener('resize', () => {
+                if (myChart) {
+                    myChart.resize();
+                }
+            });
+        }
     </script>
 
 </body>
