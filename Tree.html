@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Skill Tree (ECharts - Fixed Text)</title>
+    <title>Math Skill Tree (ECharts - Readable Text)</title>
     
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     
@@ -11,7 +11,7 @@
         :root {
             --bg-color: #101010;
             --surface1-color: #1e1e1e;
-            --text-primary: #f0f0f0; /* Light color for text */
+            --text-primary: #f0f0f0; 
             --text-secondary: #a0a0a0;
             --accent-primary: #e0e0e0;
             --icon-color-1: #f04a94;
@@ -272,9 +272,9 @@
         }
 
 
-        // --- ECHARTS IMPLEMENTATION (UPDATED OPTIONS) ---
+        // --- ECHARTS IMPLEMENTATION (UPDATED LABEL ROTATION) ---
         
-        const animationDuration = 500; // Consistent duration
+        const animationDuration = 500; 
 
         /**
          * Main ECharts function to draw the tree.
@@ -302,28 +302,24 @@
                             roam: true, 
                             expandAndCollapse: true,
                             animationDuration: animationDuration, 
-                            
-                            // === UPDATED: Start Collapsed ===
-                            initialTreeDepth: 0, // Only show the root initially
-                            
+                            initialTreeDepth: 0, 
                             symbol: 'circle',
                             symbolSize: 10,
                             
                             label: {
-                                position: 'auto',
+                                position: 'auto', // Auto-position based on angle
                                 verticalAlign: 'middle',
-                                align: 'auto',
+                                align: 'auto', // Auto-align based on angle
                                 fontSize: 14,
-                                
-                                // === UPDATED: Fix for black text ===
-                                color: '#f0f0f0', // Use direct hex code for light text
-                                
+                                color: '#f0f0f0', 
                                 triggerEvent: true, 
-
-                                // === NEW: Also ensure emphasis color is light ===
+                                
+                                // === UPDATED: Keep text horizontal ===
+                                rotate: 0, 
+                                
                                 emphasis: {
-                                    color: '#ffffff', // Brighter white on hover/focus
-                                    focus: 'ancestor' // Optional: Highlight path to root
+                                    color: '#ffffff', 
+                                    focus: 'ancestor' 
                                 }
                             },
                             
@@ -338,8 +334,11 @@
                                     position: 'auto',
                                     verticalAlign: 'middle',
                                     align: 'auto',
-                                    // === UPDATED: Explicitly set leaf text color ===
                                     color: '#f0f0f0',
+                                    
+                                    // === UPDATED: Keep leaf text horizontal ===
+                                    rotate: 0, 
+                                    
                                     emphasis: {
                                         color: '#ffffff'
                                     }
@@ -371,7 +370,7 @@
                             openModal(nodeData);
                         } else {
                             // Internal node clicked - ECharts handles expand/collapse
-                            // We still attempt to focus after a delay
+                            // Attempt to focus after a delay
                             setTimeout(() => {
                                 myChart.dispatchAction({
                                     type: 'focusNodeAdjacency',
