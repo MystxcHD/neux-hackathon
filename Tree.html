@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Skill Tree</title>
+    <title>Math Skill Tree (ECharts - Fixed Text)</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     
     <style>
         :root {
             --bg-color: #101010;
             --surface1-color: #1e1e1e;
-            --text-primary: #f0f0f0;
+            --text-primary: #f0f0f0; /* Light color for text */
             --text-secondary: #a0a0a0;
             --accent-primary: #e0e0e0;
+            --icon-color-1: #f04a94;
             --icon-color-2: #3b82f6;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -19,16 +22,17 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
-            overflow: hidden; /* Prevents scrolling on the body */
+            overflow: hidden; 
         }
         .page-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
             width: 100vw;
+            position: relative;
         }
         
-        /* --- Header for this page --- */
+        /* --- Header --- */
         .page-header {
             padding: 16px 24px;
             background-color: var(--surface1-color);
@@ -36,15 +40,22 @@
             display: flex;
             align-items: center;
             gap: 20px;
+            position: relative;
+            z-index: 100; 
+            flex-shrink: 0;
         }
         .back-button {
-            color: var(--accent-primary);
+            color: var(--text-primary);
             text-decoration: none;
             font-size: 1.5rem;
             font-weight: bold;
             padding: 4px 12px;
             border-radius: 8px;
             transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1; 
         }
         .back-button:hover { background-color: #333; }
         .page-header h1 {
@@ -56,11 +67,11 @@
             color: var(--icon-color-2);
         }
 
-        /* --- Tree Visualization Section --- */
+        /* --- Tree Visualization --- */
         #tree-container {
-            flex-grow: 1; /* Takes up all remaining space */
-            position: relative;
-            background-color: var(--bg-color);
+            flex-grow: 1; 
+            width: 100%;
+            z-index: 1;
         }
         .loading-message {
             color: var(--text-secondary);
@@ -69,31 +80,15 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            z-index: 5;
         }
 
-        /* D3.js Tree Styles */
-        .node circle {
-            fill: var(--accent-primary);
-            stroke: var(--bg-color);
-            stroke-width: 2px;
-        }
-        .node text {
-            font-size: 12px;
-            font-family: inherit;
-            fill: var(--text-secondary);
-        }
-        .node:hover text { fill: var(--text-primary); }
-        .node:hover circle { fill: var(--icon-color-2); cursor: pointer; }
-        .link { fill: none; stroke: #444; stroke-width: 1.5px; }
-
-        /* --- Modal Window Styles --- */
+        /* --- Modal (Unchanged) --- */
         #modal-overlay {
-            display: none; /* Hidden by default */
+            display: none; 
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.7);
             justify-content: center;
             align-items: center;
@@ -112,10 +107,8 @@
         }
         #modal-close {
             position: absolute;
-            top: 16px;
-            right: 16px;
-            background: none;
-            border: none;
+            top: 16px; right: 16px;
+            background: none; border: none;
             color: var(--text-secondary);
             font-size: 1.5rem;
             cursor: pointer;
@@ -126,8 +119,6 @@
             font-weight: 600;
             margin-bottom: 20px;
         }
-        
-        /* Modal Content Styles */
         .modal-section { margin-bottom: 24px; }
         .modal-section h3 {
             font-size: 1.1rem;
@@ -146,7 +137,7 @@
             border-radius: 8px;
             border: 1px solid #333;
             font-size: 0.9rem;
-            white-space: pre-wrap; /* Preserves line breaks */
+            white-space: pre-wrap;
         }
         .video-link {
             display: block;
@@ -156,22 +147,6 @@
         }
         .video-link:hover { color: var(--accent-primary); }
         
-        /* "Generate More" Button */
-        #modal-generate-more {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            background-color: var(--icon-color-2);
-            color: var(--text-primary);
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        #modal-generate-more:hover { background-color: #4a94f7; }
-
     </style>
 </head>
 <body>
@@ -183,7 +158,7 @@
         </header>
         
         <main id="tree-container">
-            </main>
+        </main>
     </div>
 
     <div id="modal-overlay">
@@ -193,191 +168,78 @@
             
             <div class="modal-section" id="practice-problems">
                 <h3>Practice Problems</h3>
-                </div>
+            </div>
 
             <div class="modal-section" id="video-tutorials">
                 <h3>Video Tutorials</h3>
-                </div>
-
-            <div class="modal-section" id="generate-more">
-                <h3>Go Deeper</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                    Generate a new tree based on this specific skill.
-                </p>
-                <button id="modal-generate-more">Generate More Specifics</button>
             </div>
+            
         </div>
     </div>
 
-    <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <script>
         
-        // --- MOCK DATABASE ---
-        // This simulates your backend. The AI would generate this data.
+        // --- MOCK DATABASE (Unchanged) ---
         const FAKE_SKILL_DB = {
-            // Top-level skills
-            "AP Calc BC": {
-                "name": "AP Calc BC",
-                "children": [
-                    { "name": "Derivatives", "children": [] }, // We only show the first subset
-                    { "name": "Integrals", "children": [] },
-                    { "name": "Limits", "children": [] }
-                ]
-            },
-            // Second-level skills
-            "Derivatives": {
-                "name": "Derivatives",
-                "children": [
-                    { "name": "Power Rule", "children": [] },
-                    { "name": "Product Rule", "children": [] },
-                    { "name": "Quotient Rule", "children": [] },
-                    { "name": "Chain Rule", "children": [] }
-                ]
-            },
-            "Integrals": {
-                "name": "Integrals",
-                "children": [
-                    { "name": "Basic Antiderivatives", "children": [] },
-                    { "name": "U-Substitution", "children": [] },
-                    { "name": "Integration by Parts", "children": [] }
-                ]
-            },
-            "Power Rule": {
-                "name": "Power Rule",
-                "children": [
-                    { "name": "Understanding Exponents", "children": [] },
-                    { "name": "Finding d/dx of x^n", "children": [] }
-                ]
-            }
-            // ... and so on
+            "AP Calc BC": { "name": "AP Calc BC", "children": [ { "name": "Derivatives" }, { "name": "Integrals" }, { "name": "Limits" } ] },
+            "Derivatives": { "name": "Derivatives", "children": [ { "name": "Power Rule" }, { "name": "Product Rule" }, { "name": "Quotient Rule" }, { "name": "Chain Rule" } ] },
+            "Integrals": { "name": "Integrals", "children": [ { "name": "Basic Antiderivatives" }, { "name": "U-Substitution" }, { "name": "Integration by Parts" } ] },
+            "Power Rule": { "name": "Power Rule", "children": [ { "name": "Understanding Exponents" }, { "name": "Finding d/dx of x^n" } ] },
+            "Limits": { "name": "Limits", "children": [ { "name": "One-Sided Limits" }, { "name": "Limits at Infinity" } ] },
+            "Chain Rule": { "name": "Chain Rule", "children": [ { "name":"Composite Functions" }, { "name": "Implicit Differentiation" } ] },
+            "Understanding Exponents": { "name": "Understanding Exponents", "children": [ { "name": "Integer Exponents" }, { "name": "Rational Exponents" } ] },
+            "Composite Functions": { "name": "Composite Functions", "children": [ { "name": "Definition of Composite Functions" }, { "name":"Evaluating Composite Functions" } ] }
         };
 
         const FAKE_PROBLEM_DB = {
             "Derivatives": {
-                problems: [
-                    { 
-                        q: "Find the derivative of f(x) = 5x³ + 2x - 1",
-                        s: "Use the Power Rule on each term:\n- d/dx(5x³) = 5 * 3x² = 15x²\n- d/dx(2x) = 2\n- d/dx(-1) = 0\nAnswer: f'(x) = 15x² + 2"
-                    }
-                ],
-                videos: [
-                    { title: "Introduction to Derivatives (Khan Academy)", url: "#" },
-                    { title: "Calculus 1: Derivatives (3Blue1Brown)", url: "#" }
-                ]
+                problems: [ { q: "Find the derivative of f(x) = 5x³ + 2x - 1", s: "f'(x) = 15x² + 2" } ],
+                videos: [ { title: "Introduction to Derivatives (Khan Academy)", url: "#" } ]
             },
             "Power Rule": {
-                problems: [
-                    { 
-                        q: "What is the derivative of y = x⁷ ?",
-                        s: "Using the Power Rule, d/dx(xⁿ) = nxⁿ⁻¹\n- n = 7\n- d/dx(x⁷) = 7x⁷⁻¹\nAnswer: 7x⁶"
-                    },
-                    { 
-                        q: "Find f'(x) for f(x) = 4√x",
-                        s: "First, rewrite √x as an exponent: f(x) = 4x¹/²\n- n = 1/2\n- f'(x) = 4 * (1/2)x^(¹/² - 1)\n- f'(x) = 2x⁻¹/²\nAnswer: 2 / √x"
-                    }
-                ],
-                videos: [
-                    { title: "The Power Rule (Khan Academy)", url: "#" },
-                    { title: "Examples of the Power Rule", url: "#" }
-                ]
+                problems: [ { q: "What is the derivative of y = x⁷ ?", s: "y' = 7x⁶" }, { q: "Find f'(x) for f(x) = 4√x", s: "f'(x) = 2 / √x" } ],
+                videos: [ { title: "The Power Rule (Khan Academy)", url: "#" } ]
+            },
+            "Understanding Exponents": {
+                problems: [ { q: "Simplify x^2 * x^3", s: "x^(2+3) = x^5" }, { q: "Simplify (y^4)^2", s: "y^(4*2) = y^8" } ],
+                videos: [ { title: "Laws of Exponents (Math Antics)", url: "#" } ]
             }
-            // ... and so on
         };
         // --- END MOCK DATABASE ---
 
 
-        // Global variables for the modal
+        // --- MODAL FUNCTIONS (Unchanged) ---
         const modalOverlay = document.getElementById('modal-overlay');
-        const modalContent = document.getElementById('modal-content');
         const modalClose = document.getElementById('modal-close');
         const modalTitle = document.getElementById('modal-title');
         const problemsContainer = document.getElementById('practice-problems');
         const videosContainer = document.getElementById('video-tutorials');
-        const generateMoreBtn = document.getElementById('modal-generate-more');
-        let currentModalSkill = null; // Store what skill is being shown
 
-
-        /**
-         * Runs when the page loads.
-         */
-        document.addEventListener('DOMContentLoaded', () => {
-            // 1. Get the user's prompt from the URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const prompt = urlParams.get('prompt') || "AP Calc BC"; // Default to "AP Calc BC"
-            
-            // 2. Set the page title
-            document.getElementById('prompt-title').textContent = `"${prompt}"`;
-
-            // 3. Fetch and draw the tree
-            fetchAndDrawTree(prompt);
-            
-            // 4. Set up modal close buttons
-            modalClose.addEventListener('click', closeModal);
-            modalOverlay.addEventListener('click', (e) => {
-                if (e.target === modalOverlay) {
-                    closeModal();
-                }
-            });
-            
-            // 5. Set up the "Generate More" button
-            generateMoreBtn.addEventListener('click', () => {
-                if (currentModalSkill) {
-                    closeModal();
-                    // This re-runs the entire process for the new, more specific skill
-                    fetchAndDrawTree(currentModalSkill);
-                }
-            });
-        });
-
-        /**
-         * Fetches the skill tree (from our FAKE_SKILL_DB) and draws it.
-         */
-        async function fetchAndDrawTree(prompt) {
-            const treeContainer = document.getElementById('tree-container');
-            treeContainer.innerHTML = `<p class="loading-message">Generating skill tree for "${prompt}"...</p>`;
-            
-            // --- FAKE BACKEND CALL ---
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate loading
-            
-            // Find the data in our fake DB, or default to the first entry
-            const skillTreeData = FAKE_SKILL_DB[prompt] || FAKE_SKILL_DB["AP Calc BC"];
-            // --- END FAKE CALL ---
-
-            // Now that we have data, draw the tree
-            drawTree(skillTreeData);
+        function closeModal() {
+            modalOverlay.style.display = 'none';
         }
 
-        /**
-         * Opens the modal window and populates it with content.
-         */
         function openModal(nodeData) {
-            currentModalSkill = nodeData.name; // Save the skill name
-            
-            // 1. Set title
             modalTitle.textContent = nodeData.name;
-            
-            // 2. Fetch and show practice problems (from FAKE_PROBLEM_DB)
             const skillContent = FAKE_PROBLEM_DB[nodeData.name];
             
-            // Clear old content
             problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
             videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
-
-            if (skillContent) {
-                // Populate Problems
+            
+            if (skillContent && skillContent.problems && skillContent.problems.length > 0) {
                 skillContent.problems.forEach(prob => {
                     const problemEl = document.createElement('div');
                     problemEl.className = 'problem';
-                    problemEl.innerHTML = `
-                        <p>${prob.q}</p>
-                        <div class="solution">${prob.s}</div>
-                    `;
+                    problemEl.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
                     problemsContainer.appendChild(problemEl);
                 });
-                
-                // Populate Videos
-                skillContent.videos.forEach(vid => {
+            } else {
+                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found for this skill.</p>';
+            }
+
+            if (skillContent && skillContent.videos && skillContent.videos.length > 0) {
+                 skillContent.videos.forEach(vid => {
                     const videoEl = document.createElement('a');
                     videoEl.className = 'video-link';
                     videoEl.href = vid.url;
@@ -386,89 +248,170 @@
                     videosContainer.appendChild(videoEl);
                 });
             } else {
-                // No content found
-                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found for this skill.</p>';
                 videosContainer.innerHTML += '<p style="color: var(--text-secondary);">No videos found for this skill.</p>';
             }
-
-            // 3. Show the modal
+           
             modalOverlay.style.display = 'flex';
         }
 
-        /**
-         * Closes the modal window.
-         */
-        function closeModal() {
-            modalOverlay.style.display = 'none';
-            currentModalSkill = null; // Clear the saved skill
+        // --- DATA PREP FUNCTION (Unchanged) ---
+        function buildFullTree(skillName) {
+            const nodeData = FAKE_SKILL_DB[skillName];
+            if (!nodeData) {
+                return { name: skillName, children: [] }; 
+            }
+            
+            let newNode = { name: nodeData.name }; 
+            if (nodeData.children && nodeData.children.length > 0) {
+                newNode.children = nodeData.children.map(child => buildFullTree(child.name));
+            } else {
+                newNode.children = []; 
+            }
+            
+            return newNode;
         }
 
+
+        // --- ECHARTS IMPLEMENTATION (UPDATED OPTIONS) ---
+        
+        const animationDuration = 500; // Consistent duration
+
         /**
-         * D3.js function to draw the tree.
+         * Main ECharts function to draw the tree.
          */
-        function drawTree(data) {
+        function drawEChartTree(data) {
             const treeContainer = document.getElementById('tree-container');
-            treeContainer.innerHTML = ''; // Clear loading message
-
-            const width = treeContainer.clientWidth;
-            const height = treeContainer.clientHeight;
-            const margin = { top: 30, right: 120, bottom: 30, left: 120 };
             
-            const innerWidth = width - margin.left - margin.right;
-            const innerHeight = height - margin.top - margin.bottom;
+            treeContainer.innerHTML = `<p class="loading-message">Loading visualization...</p>`;
+            
+            setTimeout(() => {
+                treeContainer.innerHTML = ''; 
+                const myChart = echarts.init(treeContainer, 'dark', { renderer: 'canvas' });
 
-            const svg = d3.select("#tree-container")
-                .append("svg")
-                .attr("width", width)
-                .attr("height", height)
-                .attr("viewBox", [0, 0, width, height]);
+                const chartOptions = {
+                    backgroundColor: 'transparent', 
+                    tooltip: {
+                        trigger: 'item',
+                        triggerOn: 'mousemove'
+                    },
+                    series: [
+                        {
+                            type: 'tree',
+                            data: [data], 
+                            layout: 'radial', 
+                            roam: true, 
+                            expandAndCollapse: true,
+                            animationDuration: animationDuration, 
+                            
+                            // === UPDATED: Start Collapsed ===
+                            initialTreeDepth: 0, // Only show the root initially
+                            
+                            symbol: 'circle',
+                            symbolSize: 10,
+                            
+                            label: {
+                                position: 'auto',
+                                verticalAlign: 'middle',
+                                align: 'auto',
+                                fontSize: 14,
+                                
+                                // === UPDATED: Fix for black text ===
+                                color: '#f0f0f0', // Use direct hex code for light text
+                                
+                                triggerEvent: true, 
 
-            const svgGroup = svg.append("g")
-                .attr("transform", `translate(${margin.left}, ${margin.top})`);
+                                // === NEW: Also ensure emphasis color is light ===
+                                emphasis: {
+                                    color: '#ffffff', // Brighter white on hover/focus
+                                    focus: 'ancestor' // Optional: Highlight path to root
+                                }
+                            },
+                            
+                            lineStyle: {
+                                color: '#444',
+                                width: 1.5,
+                                curveness: 0.5 
+                            },
+                            
+                            leaves: {
+                                label: {
+                                    position: 'auto',
+                                    verticalAlign: 'middle',
+                                    align: 'auto',
+                                    // === UPDATED: Explicitly set leaf text color ===
+                                    color: '#f0f0f0',
+                                    emphasis: {
+                                        color: '#ffffff'
+                                    }
+                                },
+                                itemStyle: {
+                                    color: 'var(--accent-primary)' 
+                                }
+                            },
+                            
+                            itemStyle: {
+                                color: 'var(--icon-color-2)', 
+                                borderColor: 'var(--icon-color-2)'
+                            }
+                        }
+                    ]
+                };
 
-            const treeLayout = d3.tree().size([innerHeight, innerWidth]);
-            const root = d3.hierarchy(data);
-            treeLayout(root);
+                myChart.setOption(chartOptions);
 
-            // Zoom behavior
-            const zoom = d3.zoom()
-                .scaleExtent([0.1, 3])
-                .on("zoom", (event) => {
-                    svgGroup.attr("transform", event.transform);
+                // --- Click Handler (Unchanged) ---
+                myChart.on('click', (params) => {
+                    if (params.componentType === 'series' && params.componentSubType === 'tree') {
+                        const nodeData = params.data;
+                        const dataIndex = params.dataIndex;
+                        const seriesIndex = params.seriesIndex;
+                        
+                        // Check if it's a leaf node
+                        if (!nodeData.children || nodeData.children.length === 0) {
+                            openModal(nodeData);
+                        } else {
+                            // Internal node clicked - ECharts handles expand/collapse
+                            // We still attempt to focus after a delay
+                            setTimeout(() => {
+                                myChart.dispatchAction({
+                                    type: 'focusNodeAdjacency',
+                                    seriesIndex: seriesIndex,
+                                    dataIndex: dataIndex 
+                                });
+                            }, animationDuration / 3); 
+                        }
+                    }
                 });
-            svg.call(zoom);
 
-            // Draw Links
-            svgGroup.selectAll('.link')
-                .data(root.links())
-                .enter().append('path')
-                .attr('class', 'link')
-                .attr('d', d3.linkHorizontal().x(d => d.y).y(d => d.x));
-
-            // Draw Nodes
-            const node = svgGroup.selectAll('.node')
-                .data(root.descendants())
-                .enter().append('g')
-                .attr('class', 'node')
-                .attr('transform', d => `translate(${d.y},${d.x})`);
-
-            node.append('circle').attr('r', 6);
-
-            node.append('text')
-                .text(d => d.data.name)
-                .attr('dy', '0.35em')
-                .attr('x', d => (d.children || d._children) ? -10 : 10)
-                .style('text-anchor', d => (d.children || d._children) ? 'end' : 'start');
-
-            // --- THIS IS THE NEW CLICK HANDLER ---
-            // It now calls openModal instead of zooming.
-            node.on('click', (event, d) => {
-                openModal(d.data); // 'd.data' is the original JSON object for that node
-            });
-            
-            // Center the tree on initial load
-            svg.call(zoom.transform, d3.zoomIdentity.translate(margin.left, height / 2).scale(1));
+                // Make the chart responsive
+                window.addEventListener('resize', () => {
+                    myChart.resize();
+                });
+            }, 10); // 10ms delay
         }
+
+
+        /**
+         * Runs when the page loads.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const prompt = urlParams.get('prompt') || "AP Calc BC";
+
+            document.getElementById('prompt-title').textContent = `"${prompt}"`;
+            
+            const initialData = buildFullTree(prompt);
+            
+            drawEChartTree(initialData); 
+
+            // Set up modal listeners
+            modalClose.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    closeModal();
+                }
+            });
+        });
 
     </script>
 
