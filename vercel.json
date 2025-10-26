@@ -1,0 +1,38 @@
+{
+    "builds": [
+      {
+        "src": "public/**/*",
+        "use": "@vercel/static-build",
+        "config": {
+          "distDir": "public"
+        }
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/login",
+        "destination": "/login.html"
+      },
+      {
+        "source": "/signup",
+        "destination": "/signup.html"
+      },
+      {
+        "source": "/app",
+        "destination": "/app.html"
+      }
+    ],
+    "routes": [
+      { 
+        "src": "/(login|signup|app).html", 
+        "dest": "$0",
+        "headers": {
+          "Cache-Control": "public, max-age=0, must-revalidate"
+        }
+      },
+      { 
+        "src": "/.*", 
+        "dest": "/index.html" 
+      }
+    ]
+  }
