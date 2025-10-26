@@ -256,12 +256,17 @@
     </div>
 
     <script>
-        // --- small caching & API url ---
+        // --- Caching, API url, and Global State ---
         const skillCache = {};
         const API_URL = 'http://localhost:3000/get-skills';
 
         let currentModalSkill = null;
         let myChart = null;
+        
+        // --- NEW: Global state for background grid ---
+        let currentBgPosX = 0;
+        let currentBgPosY = 0;
+        let currentBgSize = 20; // Must match your CSS
 
         document.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('floating-panel');
@@ -327,92 +332,56 @@
             modalClose.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
             
-            // MODIFIED: 'generateMoreBtn' listener
+            // 'generateMoreBtn' listener
             generateMoreBtn.addEventListener('click', () => {
                 if (currentModalSkill) {
-                    // This now calls the new expandNode function
-                    // which modifies the existing tree instead of replacing it.
                     expandNode(currentModalSkill);
                 }
             });
 
+            // --- REMOVED: All manual panning logic (mousedown, onBgDrag, onBgDragEnd) ---
+            // ECharts 'roam' event will handle this now.
 
-            // Background panning (only start if click hits container background or canvas)
-            let isPanningBg = false;
-            let startBgX = 0, startBgY = 0;
-            let startChartX = 0, startChartY = 0; // <-- Track chart's pan
-            let startMouseX = 0, startMouseY = 0;
-
-            treeContainer.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return;
-
-                const canvas = treeContainer.querySelector('canvas');
-                // allow panning if clicked either on the container background or directly on the canvas element
-                // Also allow panning on the loader
-                const chartWrapper = treeContainer.firstElementChild;
-                if (e.target !== treeContainer && e.target !== canvas && e.target !== chartWrapper && !e.target.closest('.loader-container')) {
-                    return;
-                }
-
-                isPanningBg = true;
-                startMouseX = e.clientX;
-                startMouseY = e.clientY;
-
-                // Get background start pos
-                const bgPos = window.getComputedStyle(treeContainer).backgroundPosition.split(' ');
-                startBgX = parseFloat(bgPos[0]) || 0;
-                startBgY = parseFloat(bgPos[1]) || 0;
-
-                // Get chart wrapper's current transform
-                if (chartWrapper && chartWrapper.style.transform) {
-                    const transform = window.getComputedStyle(chartWrapper).transform;
-                    if (transform && transform !== 'none') {
-                        // Use DOMMatrix to parse translate values (robust)
-                        const matrix = new DOMMatrix(transform);
-                        startChartX = matrix.m41; // translateX
-                        startChartY = matrix.m42; // translateY
-                    } else {
-                        startChartX = 0;
-                        startChartY = 0;
-                    }
-                } else {
-                    startChartX = 0;
-                    startChartY = 0;
-                }
-
-                treeContainer.style.cursor = 'grabbing';
-                document.addEventListener('mousemove', onBgDrag);
-                document.addEventListener('mouseup', onBgDragEnd, { once: true });
-            });
-
-            function onBgDrag(e) {
-                if (!isPanningBg) return;
-                e.preventDefault();
-                const deltaX = e.clientX - startMouseX;
-                const deltaY = e.clientY - startMouseY;
-
-                // Calculate new absolute positions
-                const newBgX = startBgX + deltaX;
-                const newBgY = startBgY + deltaY;
-                const newChartX = startChartX + deltaX;
-                const newChartY = startChartY + deltaY;
-
-                // Apply to background
-                treeContainer.style.backgroundPosition = `${newBgX}px ${newBgY}px`;
-
-                // Apply to chart wrapper (or loader)
-                const chartWrapper = treeContainer.firstElementChild;
-                if (chartWrapper && (chartWrapper.tagName === 'DIV' || chartWrapper.tagName === 'CANVAS')) {
-                    chartWrapper.style.transform = `translate(${newChartX}px, ${newChartY}px)`;
-                }
-            }
-
-            function onBgDragEnd() {
-                isPanningBg = false;
-                treeContainer.style.cursor = 'default';
-                document.removeEventListener('mousemove', onBgDrag);
-            }
         });
+
+        // --- NEW: Syncs the background grid to the chart's pan/zoom ---
+        function onChartRoam(params) {
+            const treeContainer = document.getElementById('tree-container');
+            const option = myChart.getOption();
+            
+            // 1. Handle Panning (Translation)
+            // params.dx and params.dy are the pixel changes from the event
+            if (params.dx !== 0 || params.dy !== 0) {
+                currentBgPosX += params.dx;
+                currentBgPosY += params.dy;
+            }
+
+            // 2. Handle Zooming (Scaling)
+            if (params.zoom) {
+                // params.zoom is the zoom ratio (e.g., 1.1),
+                // option.series[0].zoom is the new *total* zoom level
+                const newZoom = option.series[0].zoom;
+                currentBgSize = 20 * newZoom; // 20 is the base CSS size
+
+                // Get the mouse position (origin of the zoom)
+                const originX = params.originX;
+                const originY = params.originY;
+
+                // Calculate background position shift to keep the point
+                // under the mouse stationary (zooming toward the cursor)
+                const relX = originX - currentBgPosX;
+                const relY = originY - currentBgPosY;
+                
+                currentBgPosX -= relX * (params.zoom - 1);
+                currentBgPosY -= relY * (params.zoom - 1);
+
+                treeContainer.style.backgroundSize = `${currentBgSize}px ${currentBgSize}px`;
+            }
+            
+            // 3. Apply all transformations
+            treeContainer.style.backgroundPosition = `${currentBgPosX}px ${currentBgPosY}px`;
+        }
+
 
         // NEW: Helper function to find a node by name in the tree data
         function findNode(node, targetName) {
@@ -519,6 +488,8 @@
             `;
             // Reset background position for the loader, in case it was panned
             treeContainer.style.backgroundPosition = '0 0';
+            treeContainer.style.backgroundSize = '20px 20px'; // Reset zoom
+
 
             if (skillCache[prompt]) {
                 drawEChartTree(skillCache[prompt]);
@@ -612,8 +583,12 @@
         function drawEChartTree(data) {
             const treeContainer = document.getElementById('tree-container');
             
-            // Reset pan position before drawing a new tree
+            // Reset pan and background state
+            currentBgPosX = 0;
+            currentBgPosY = 0;
+            currentBgSize = 20;
             treeContainer.style.backgroundPosition = '0 0';
+            treeContainer.style.backgroundSize = '20px 20px';
 
             treeContainer.innerHTML = ''; // This will destroy the old transformed chart wrapper
 
@@ -636,7 +611,7 @@
                 backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'item',
-                    triggerOn: 'none',
+                    triggerOn: 'none', // We use right-click for modal instead
                     backgroundColor: 'rgba(30, 30, 30, 0.9)',
                     borderColor: '#555',
                     borderWidth: 1,
@@ -648,18 +623,37 @@
                         type: 'tree',
                         data: [data],
                         layout: 'radial',
-                        roam: false, // Keep ECharts' internal roam disabled
+                        
+                        roam: true, 
+                        scaleLimit: { 
+                            min: 0.3,
+                            max: 3.0
+                        },
+
                         expandAndCollapse: true,
                         animationDuration: animationDuration,
                         initialTreeDepth: treeDepth,
+                        
+                        // --- MODIFICATION 1: Make the symbol tiny and transparent ---
                         symbol: 'circle',
-                        symbolSize: 8,
+                        symbolSize: 1, // Very small size
+                        symbolKeepAspect: true,
+                        itemStyle: { // Apply itemStyle here to make the symbol transparent
+                            color: 'rgba(0,0,0,0)', // Completely transparent background for the actual node point
+                            borderColor: 'rgba(0,0,0,0)', // Completely transparent border for the actual node point
+                            borderWidth: 0,
+                            opacity: 1
+                        },
 
                         label: {
                             show: true,
-                            position: 'auto',
+                            // --- MODIFICATION 2: Position label to be centered on the symbol ---
+                            position: 'inside', // Renders the label inside the symbol's bounding box
                             verticalAlign: 'middle',
-                            align: 'auto',
+                            align: 'center', // Centers text horizontally
+                            offset: [0, 0], // No offset, so it's perfectly centered on the symbol
+                            // --- END MODIFICATION 2 ---
+
                             fontSize: 14,
                             color: '#ffffff',
                             triggerEvent: true,
@@ -684,36 +678,29 @@
                                 padding: [4, 7],
                                 borderRadius: 4
                             },
-                            itemStyle: {
-                                color: surfaceColor,
-                                borderColor: textSecondary,
-                                borderWidth: 1.5
+                            // --- MODIFICATION 3: Also make leaf symbols tiny and transparent ---
+                            itemStyle: { 
+                                color: 'rgba(0,0,0,0)',
+                                borderColor: 'rgba(0,0,0,0)',
+                                borderWidth: 0
                             }
+                            // --- END MODIFICATION 3 ---
                         },
-
-                        itemStyle: {
-                            color: surfaceColor,
-                            borderColor: iconColor2,
-                            borderWidth: 1.5,
-                            opacity: 1
-                        }
                     }
                 ]
             };
 
             myChart.setOption(chartOptions);
 
-            // 'click' (left-click) handles expand/collapse by default
+            myChart.on('roam', onChartRoam);
+
             myChart.on('click', (params) => {
                 if (params.componentType === 'series' && params.componentSubType === 'tree') {
                     // Default behavior is expand/collapse, which is what we want.
-                    // No need to call openModal here.
                 }
             });
 
-            // 'contextmenu' (right-click) opens the modal
             myChart.on('contextmenu', (params) => {
-                // Prevent the default browser right-click menu
                 params.event.event.preventDefault();
                 
                 if (params.componentType === 'series' && params.componentSubType === 'tree' && params.data) {
@@ -721,7 +708,6 @@
                 }
             });
 
-            // ensure chart resizes
             window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
         }
     </script>
