@@ -21,6 +21,66 @@
             --error-color: #f87171;
         }
 
+                /* --- History Section Styles --- */
+        #history-section {
+            margin-bottom: 20px;
+        }
+        #history-toggle { /* The clickable label */
+            display: block;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            cursor: pointer; /* Indicate it's clickable */
+            user-select: none; /* Prevent text selection */
+            position: relative; /* For positioning the triangle */
+        }
+        /* Add the expand/collapse triangle icon */
+        #history-toggle::after {
+            content: '▶';
+            position: absolute;
+            right: 5px;
+            top: 2px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            transition: transform 0.2s ease-in-out;
+        }
+        /* Rotate triangle when the section is open */
+        #history-toggle.is-open::after {
+            transform: rotate(90deg);
+        }
+
+        /* Container for the history tags */
+        #history-content {
+            display: none; /* Collapsed by default */
+            flex-wrap: wrap; /* Allow tags to wrap */
+            gap: 8px; /* Spacing between tags */
+            max-height: 110px; /* Limit height to prevent taking too much space */
+            overflow-y: auto; /* Add scrollbar if there are many tags */
+        }
+        /* Style to show the content when the toggle is active */
+        #history-content.is-open {
+            display: flex; /* Show tags using flexbox */
+        }
+
+        /* Individual history tag button style */
+        .history-tag {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 20px; /* Pill shape */
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s; /* Smooth hover effect */
+            white-space: nowrap; /* Prevent tags from breaking lines */
+        }
+        /* Hover effect for tags */
+        .history-tag:hover {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+            border-color: #555;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -224,6 +284,11 @@
         </header>
 
         <form id="prompt-form">
+            <section id="history-section">
+                <label id="history-toggle">Recent Topics</label>
+                <div id="history-content">
+                    </div>
+            </section>
             <section class="input-section">
                 <label for="problem-input">Enter a topic or idea</label>
                 <textarea id="problem-input" name="prompt" placeholder="e.g., 'Calculus' or 'History of the Roman Empire'" aria-label="Topic input"></textarea>
@@ -267,6 +332,100 @@
         let currentBgPosY = 0;
         let currentBgSize = 20; 
 
+        // --- History Section ---
+        const HISTORY_KEY = 'conceptVisualizerHistory';
+        const MAX_HISTORY_ITEMS = 15;
+
+        /**
+         * Gets the history array from localStorage.
+         * @returns {string[]} An array of search topics.
+         */
+        function getHistory() {
+            const history = localStorage.getItem(HISTORY_KEY);
+            return history ? JSON.parse(history) : [];
+        }
+
+        /**
+         * Saves the history array to localStorage.
+         * @param {string[]} history - The array of topics to save.
+         */
+        function saveHistory(history) {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        }
+
+        /**
+         * Adds a new topic to the history, manages duplicates, and limits size.
+         * @param {string} topic - The topic string to add.
+         */
+        function addTopicToHistory(topic) {
+            let history = getHistory();
+            
+            // Remove the topic if it already exists (to move it to the front)
+            const existingIndex = history.indexOf(topic);
+            if (existingIndex > -1) {
+                history.splice(existingIndex, 1);
+            }
+
+            // Add the new topic to the beginning of the list
+            history.unshift(topic);
+
+            // Enforce the maximum number of history items
+            if (history.length > MAX_HISTORY_ITEMS) {
+                history = history.slice(0, MAX_HISTORY_ITEMS);
+            }
+
+            // Save and re-render
+            saveHistory(history);
+            renderHistoryTags(history);
+        }
+
+        /**
+         * Renders the history tags in the UI.
+         * @param {string[]} history - An array of topics.
+         */
+        function renderHistoryTags(history) {
+            const historyContent = document.getElementById('history-content');
+            historyContent.innerHTML = ''; // Clear existing tags
+
+            if (history.length === 0) {
+                // Show a message if history is empty
+                historyContent.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.85rem; width: 100%; text-align: center; padding: 10px 0;">No recent topics.</p>';
+                return;
+            }
+
+            // Create and append a button for each topic
+            history.forEach(topic => {
+                const tag = document.createElement('button');
+                tag.className = 'history-tag';
+                tag.textContent = topic;
+                tag.type = 'button'; // Prevent form submission
+                
+                // Add click listener to search for this topic
+                tag.addEventListener('click', () => onHistoryTagClick(topic));
+                
+                historyContent.appendChild(tag);
+            });
+        }
+
+        /**
+         * Handles the click event for a history tag.
+         * @param {string} topic - The topic to search for.
+         */
+        function onHistoryTagClick(topic) {
+            // Set the value in the textarea
+            document.getElementById('problem-input').value = topic;
+            // Run the search
+            fetchAndDrawTree(topic);
+        }
+
+        /**
+         * Loads history from localStorage and renders the tags on page load.
+         */
+        function loadHistory() {
+            const history = getHistory();
+            renderHistoryTags(history);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('floating-panel');
             const collapseBtn = document.getElementById('collapse-btn');
@@ -277,6 +436,8 @@
             const generateMoreBtn = document.getElementById('modal-generate-more');
             const panelHeader = panel.querySelector('header');
             const treeContainer = document.getElementById('tree-container');
+            const historyToggle = document.getElementById('history-toggle');
+            const historyContent = document.getElementById('history-content');
 
             // submit handler
             promptForm.addEventListener('submit', (e) => {
@@ -284,6 +445,7 @@
                 const prompt = promptInput.value.trim();
                 if (prompt) {
                     fetchAndDrawTree(prompt);
+                    addTopicToHistory(prompt);
                 }
             });
 
@@ -327,6 +489,12 @@
             // Collapse toggle
             collapseBtn.addEventListener('click', () => panel.classList.toggle('is-collapsed'));
 
+            // History toggle
+            historyToggle.addEventListener('click', () => {
+                historyToggle.classList.toggle('is-open');
+                historyContent.classList.toggle('is-open');
+            });
+
             // modal listeners
             modalClose.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
@@ -369,6 +537,7 @@
                 });
             }, { passive: false }); // 'passive: false' is needed to allow preventDefault()
 
+            loadHistory(); // Load and render history tags on page load
         });
 
         // --- NEW: Syncs the background grid to the chart's pan/zoom ---
@@ -718,6 +887,7 @@
 
             window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
         }
+        
     </script>
 </body>
 </html>
