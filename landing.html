@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neux - Master Any Topic with AI-Powered Learning Graphs</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Google Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Custom styles for the page */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #040303; /* Main BG */
+            color: #DCD5D0; /* Primary Text */
+        }
+        
+        /* Scroll-in animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s cubic-bezier(0.215, 0.610, 0.355, 1), transform 0.8s cubic-bezier(0.215, 0.610, 0.355, 1);
+            transition-delay: 0.1s;
+        }
+        
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Mockup graph node styles */
+        .node {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            font-weight: 600;
+            z-index: 10;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .node-line {
+            position: absolute;
+            background-color: #6a7b76; /* Payne's Gray */
+            height: 2px;
+            z-index: 5;
+            transform-origin: left center;
+        }
+
+        /* Typing animation styles */
+        .cursor {
+            display: inline-block;
+            width: 4px;
+            background-color: #DCD5D0; /* Silver Pink */
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header -->
+    <header class="absolute top-0 left-0 right-0 z-50 py-5">
+        <nav class="container mx-auto max-w-7xl px-6 lg:px-8 flex justify-between items-center">
+            <a href="#" class="text-3xl font-bold text-[#F2F6D0]">
+                Neux.
+            </a>
+            <div class="flex items-center space-x-4">
+                <a href="login.html" class="bg-[#DCD5D0] text-[#040303] font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-[#a99e98] transition-all transform hover:scale-105">
+                    Log In
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="overflow-hidden">
+        <section class="relative pt-40 pb-20 lg:pt-56 lg:pb-32 min-h-[50vh] flex items-center">
+            <!-- No Background Gradient -->
+
+            <div class="container mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
+                <div class="max-w-3xl mx-auto text-center">
+                    <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tighter text-[#DCD5D0]">
+                        <span id="typing-text"></span>
+                        <span class="cursor"></span>
+                    </h1>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-20 lg:py-32">
+            <div class="container mx-auto max-w-7xl px-6 lg:px-8">
+                <div class="max-w-2xl mx-auto text-center reveal">
+                    <h2 class="text-3xl lg:text-4xl font-extrabold tracking-tight text-[#F2F6D0]">
+                        A New Dimension of Learning
+                    </h2>
+                    <p class="mt-4 text-lg text-[#6a7b76]">
+                        Neux isn't just another study tool. It's a new way to see and interact with knowledge.
+                    </p>
+                </div>
+
+                <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Feature 1: Graphs -->
+                    <div class="reveal bg-[#2E3138]/30 border border-[#2E3138] p-8 rounded-xl shadow-lg">
+                        <div class="w-12 h-12 bg-[#F2F6D0] flex items-center justify-center rounded-lg text-[#040303]">
+                            <!-- Network Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="8" width="4" height="4" rx="2" ry="2"></rect><rect x="2" y="8" width="4" height="4" rx="2" ry="2"></rect><rect x="10" y="18" width="4" height="4" rx="2" ry="2"></rect><path d="M12 16v-4"></path><path d="M12 8V4"></path><path d="m5 10-3 2"></path><path d="m19 10 3 2"></path><path d="m14 19 3 2"></path><path d="m10 19-3 2"></path></svg>
+                        </div>
+                        <h3 class="mt-5 text-xl font-semibold text-[#DCD5D0]">Interactive Knowledge Graphs</h3>
+                        <p class="mt-2 text-base text-[#6a7b76]">
+                            Stop learning in silos. Neux shows you the bigger picture, visualizing prerequisites, related concepts, and advanced topics in one intuitive map.
+                        </p>
+                    </div>
+
+                    <!-- Feature 2: Learning Paths -->
+                    <div class="reveal bg-[#2E3138]/30 border border-[#2E3138] p-8 rounded-xl shadow-lg" style="transition-delay: 0.2s;">
+                        <div class="w-12 h-12 bg-[#F2F6D0] flex items-center justify-center rounded-lg text-[#040303]">
+                            <!-- Path/Map Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9.5 10 14.5"></path><path d="M10.5 9C12 9 13 8 14 7"></path><path d="M4 22c-1-1-2-2-2-4 0-4 4-8 8-8s8 4 8 8c0 2-1 3-2 4"></path><path d="m14.5 14-.5 1c-1 2 0 4 2 5s4 1 5-2l1-.5"></path><path d="M14 7c1-1 2-2 4-2"></path></svg>
+                        </div>
+                        <h3 class="mt-5 text-xl font-semibold text-[#DCD5D0]">Chronological Learning Paths</h3>
+                        <p class="mt-2 text-base text-[#6a7b76]">
+                            Want to master chess? Neux builds a step-by-step curriculum, from setting up the board to advanced tactics and strategies, guiding you all the way.
+                        </p>
+                    </div>
+                    
+                    <!-- Feature 3: AI Explanations -->
+                    <div class="reveal bg-[#2E3138]/30 border border-[#2E3138] p-8 rounded-xl shadow-lg" style="transition-delay: 0.3s;">
+                        <div class="w-12 h-12 bg-[#F2F6D0] flex items-center justify-center rounded-lg text-[#040303]">
+                            <!-- AI/Sparkles Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 4.8-4.8 1.9 4.8 1.9L12 16l1.9-4.8 4.8-1.9-4.8-1.9L12 3Z"></path><path d="M5 21v-4"></path><path d="M3 19h4"></path><path d="M19 21v-4"></path><path d="M17 19h4"></path></svg>
+                        </div>
+                        <h3 class="mt-5 text-xl font-semibold text-[#DCD5D0]">Deep AI Explanations</h3>
+                        <p class="mt-2 text-base text-[#6a7b76]">
+                            Click any topic to get a detailed GPT-powered explanation. Get the "how" and "why," complete with examples, video links, and tutorials.
+                        </p>
+                    </div>
+
+                    <!-- Feature 4: Community & Sharing -->
+                    <div class="reveal bg-[#2E3138]/30 border border-[#2E3138] p-8 rounded-xl shadow-lg" style="transition-delay: 0.4s;">
+                        <div class="w-12 h-12 bg-[#F2F6D0] flex items-center justify-center rounded-lg text-[#040303]">
+                            <!-- Users Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        </div>
+                        <h3 class="mt-5 text-xl font-semibold text-[#DCD5D0]">Share Your Paths</h3>
+                        <p class="mt-2 text-base text-[#6a7b76]">
+                            Learning is better together. Share your custom-generated learning graphs with friends, classmates, or the entire Neux community.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA Section -->
+        <section class="py-20 lg:py-32 relative">
+             <!-- No Background Gradient -->
+
+            <div class="container mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
+                <div class="reveal max-w-3xl mx-auto text-center bg-[#2E3138]/30 backdrop-blur-md border border-[#2E3138] rounded-xl p-10 lg:p-16">
+                    <h2 class="text-3xl lg:text-5xl font-extrabold tracking-tight text-[#DCD5D0]">
+                        Ready to <span class="text-[#F2F6D0]">Master Your Next Skill?</span>
+                    </h2>
+                    <p class="mt-6 text-lg text-[#6a7b76]">
+                        Sign up for free and generate your first learning graph today. Transform the way you learn, forever.
+                    </p>
+                    <a href="signup.html" class="mt-10 inline-block bg-[#DCD5D0] text-[#040303] font-semibold py-4 px-10 rounded-lg shadow-lg text-lg hover:bg-[#a99e98] transition-all transform hover:scale-105">
+                        Get Started with Neux
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-16 bg-[#040303] border-t border-[#2E3138]">
+        <div class="container mx-auto max-w-7xl px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div class="text-center md:text-left">
+                    <a href="#" class="text-3xl font-bold text-[#F2F6D0]">Neux</a>
+                    <p class="text-[#6a7b76] mt-2">See knowledge differently.</p>
+                </div>
+                <div class="flex gap-6 text-[#6a7b76]">
+                    <a href="#" class="hover:text-[#DCD5D0] transition-colors">About</a>
+                    <a href="#" class="hover:text-[#DCD5D0] transition-colors">Privacy</a>
+                    <a href="#" class="hover:text-[#DCD5D0] transition-colors">Terms</a>
+                    <a href="#" class"hover:text-[#DCD5D0] transition-colors">Contact</a>
+                </div>
+            </div>
+            <div class="mt-8 border-t border-[#2E3138] pt-8 text-center text-[#6a7b76]">
+                &copy; 2025 Neux. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- JS for scroll animations -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Scroll animations
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { 
+                threshold: 0.1 
+            });
+
+            document.querySelectorAll('.reveal').forEach(el => {
+                observer.observe(el);
+            });
+
+            // Typing animation
+            const typingText = document.getElementById('typing-text');
+            const subjects = [
+                "Learn Anything.",
+                "Learn Chess.",
+                "Learn Cooking.",
+                "Learn Calculus.",
+                "Learn Guitar.",
+                "Learn Python.",
+                "Learn History.",
+            ];
+            let subjectIndex = 0;
+            let charIndex = 0;
+            let isDeleting = false;
+
+            function type() {
+                const currentSubject = subjects[subjectIndex];
+                let displayText = '';
+
+                if (isDeleting) {
+                    displayText = currentSubject.substring(0, charIndex - 1);
+                    charIndex--;
+                } else {
+                    displayText = currentSubject.substring(0, charIndex + 1);
+                    charIndex++;
+                }
+
+                typingText.textContent = displayText;
+
+                let typeSpeed = isDeleting ? 55 : 75;
+
+                if (!isDeleting && charIndex === currentSubject.length) {
+                    typeSpeed = 1500; // Pause at end of word
+                    isDeleting = true;
+                } else if (isDeleting && charIndex === 0) {
+                    isDeleting = false;
+                    subjectIndex = (subjectIndex + 1) % subjects.length;
+                    typeSpeed = 500; // Pause before new word
+                }
+
+                setTimeout(type, typeSpeed);
+            }
+
+            type(); // Start the animation
+        });
+    </script>
+</body>
+</html>
