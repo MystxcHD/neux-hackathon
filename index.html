@@ -263,10 +263,9 @@
         let currentModalSkill = null;
         let myChart = null;
         
-        // --- NEW: Global state for background grid ---
         let currentBgPosX = 0;
         let currentBgPosY = 0;
-        let currentBgSize = 20; // Must match your CSS
+        let currentBgSize = 20; 
 
         document.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('floating-panel');
@@ -338,9 +337,37 @@
                     expandNode(currentModalSkill);
                 }
             });
+            
+            // --- NEW: Global wheel listener for zooming anywhere ---
+            window.addEventListener('wheel', (e) => {
+                // If the scroll is over the floating panel or modal, do nothing.
+                // This allows scrolling inside the panel's textarea or a long modal.
+                if (
+                    e.target.closest('#floating-panel') || 
+                    e.target.closest('#modal-content')
+                ) {
+                    return; // Let the browser handle scrolling for these UI elements
+                }
+                // --- END MODIFICATION ---
 
-            // --- REMOVED: All manual panning logic (mousedown, onBgDrag, onBgDragEnd) ---
-            // ECharts 'roam' event will handle this now.
+                // If the chart doesn't exist, do nothing
+                if (!myChart) return;
+
+                // Prevent the default page scroll
+                e.preventDefault();
+
+                const zoomFactor = 1.1;
+                // e.deltaY > 0 means scrolling down (zoom out)
+                const zoomDelta = e.deltaY > 0 ? (1 / zoomFactor) : zoomFactor;
+
+                // Dispatch a 'roam' action to ECharts
+                myChart.dispatchAction({
+                    type: 'roam',
+                    zoom: zoomDelta,
+                    originX: e.clientX, // Zoom toward the mouse cursor
+                    originY: e.clientY
+                });
+            }, { passive: false }); // 'passive: false' is needed to allow preventDefault()
 
         });
 
@@ -350,7 +377,6 @@
             const option = myChart.getOption();
             
             // 1. Handle Panning (Translation)
-            // params.dx and params.dy are the pixel changes from the event
             if (params.dx !== 0 || params.dy !== 0) {
                 currentBgPosX += params.dx;
                 currentBgPosY += params.dy;
@@ -358,17 +384,12 @@
 
             // 2. Handle Zooming (Scaling)
             if (params.zoom) {
-                // params.zoom is the zoom ratio (e.g., 1.1),
-                // option.series[0].zoom is the new *total* zoom level
                 const newZoom = option.series[0].zoom;
-                currentBgSize = 20 * newZoom; // 20 is the base CSS size
+                currentBgSize = 20 * newZoom; 
 
-                // Get the mouse position (origin of the zoom)
                 const originX = params.originX;
                 const originY = params.originY;
 
-                // Calculate background position shift to keep the point
-                // under the mouse stationary (zooming toward the cursor)
                 const relX = originX - currentBgPosX;
                 const relY = originY - currentBgPosY;
                 
@@ -383,7 +404,7 @@
         }
 
 
-        // NEW: Helper function to find a node by name in the tree data
+        // Helper function to find a node by name in the tree data
         function findNode(node, targetName) {
             if (!node) return null;
             if (node.name === targetName) {
@@ -398,7 +419,7 @@
             return null;
         }
 
-        // NEW: Function to expand a node with more specifics
+        // Function to expand a node with more specifics
         async function expandNode(prompt) {
             const generateMoreBtn = document.getElementById('modal-generate-more');
             const originalBtnText = generateMoreBtn.textContent;
@@ -431,7 +452,6 @@
                         throw new Error(details);
                     }
                     
-                    // Cache the newly fetched tree structure
                     skillCache[prompt] = newData;
                 }
 
@@ -439,23 +459,18 @@
                 if (!myChart) {
                     throw new Error("Chart is not initialized.");
                 }
-                // Get the 'data' array from the first series
                 const currentData = myChart.getOption().series[0].data[0];
                 const targetNode = findNode(currentData, prompt);
 
                 if (targetNode) {
                     // 3. Merge new data into the target node
-                    // This copies children, practiceProblems, etc.
                     Object.assign(targetNode, newData);
-                    
-                    // Ensure it's marked as expandable
                     targetNode.collapsed = false;
 
                     // 4. Update the chart
-                    // We pass the modified 'currentData' (the root node) back to the chart
                     myChart.setOption({
                         series: [{
-                            data: [currentData] // Pass the entire modified tree data back
+                            data: [currentData] 
                         }]
                     });
                     
@@ -468,7 +483,7 @@
 
             } catch (error) {
                 console.error('Failed to expand node:', error);
-                alert(`Error expanding node: ${error.message}`); // Simple error feedback
+                alert(`Error expanding node: ${error.message}`); 
             } finally {
                 // 6. Restore button
                 generateMoreBtn.textContent = originalBtnText;
@@ -486,7 +501,7 @@
                     <div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div>
                 </div>
             `;
-            // Reset background position for the loader, in case it was panned
+            // Reset background position for the loader
             treeContainer.style.backgroundPosition = '0 0';
             treeContainer.style.backgroundSize = '20px 20px'; // Reset zoom
 
@@ -503,7 +518,6 @@
                     body: JSON.stringify({ prompt: prompt }),
                 });
 
-                // If server returns non-JSON, guard against parsing errors
                 const text = await response.text();
                 let skillData;
                 try { skillData = JSON.parse(text); } catch (err) {
@@ -541,8 +555,6 @@
             problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
             videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
 
-            // MODIFIED: Check nodeData directly first, then the cache.
-            // When a node is expanded, 'practiceProblems' is merged directly into nodeData.
             const skillContent = nodeData.practiceProblems ? nodeData : skillCache[nodeData.name];
 
             if (skillContent && skillContent.practiceProblems) {
@@ -578,7 +590,7 @@
             currentModalSkill = null;
         }
 
-        // ECharts drawing — resolve CSS variables into JS values first
+        // ECharts drawing
         const animationDuration = 500;
         function drawEChartTree(data) {
             const treeContainer = document.getElementById('tree-container');
@@ -590,20 +602,19 @@
             treeContainer.style.backgroundPosition = '0 0';
             treeContainer.style.backgroundSize = '20px 20px';
 
-            treeContainer.innerHTML = ''; // This will destroy the old transformed chart wrapper
+            treeContainer.innerHTML = ''; 
 
             if (myChart) { myChart.dispose(); }
 
             myChart = echarts.init(treeContainer, null, { renderer: 'canvas' });
 
-            // Resolve theme variables that can't be used directly in canvas
+            // Resolve theme variables
             const cs = getComputedStyle(document.documentElement);
             const labelBg = (cs.getPropertyValue('--label-bg') || 'rgba(30,30,30,0.75)').trim();
             const surfaceColor = (cs.getPropertyValue('--surface1-color') || '#1e1e1e').trim();
             const textSecondary = (cs.getPropertyValue('--text-secondary') || '#a0a0a0').trim();
             const iconColor2 = (cs.getPropertyValue('--icon-color-2') || '#3b82f6').trim();
 
-            // determine initial expand depth
             let treeDepth = 0;
             if (data.children && data.children.length > 0) treeDepth = 1;
 
@@ -611,7 +622,7 @@
                 backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'item',
-                    triggerOn: 'none', // We use right-click for modal instead
+                    triggerOn: 'none', 
                     backgroundColor: 'rgba(30, 30, 30, 0.9)',
                     borderColor: '#555',
                     borderWidth: 1,
@@ -623,37 +634,32 @@
                         type: 'tree',
                         data: [data],
                         layout: 'radial',
-                        
                         roam: true, 
                         scaleLimit: { 
                             min: 0.3,
                             max: 3.0
                         },
-
                         expandAndCollapse: true,
                         animationDuration: animationDuration,
                         initialTreeDepth: treeDepth,
                         
-                        // --- MODIFICATION 1: Make the symbol tiny and transparent ---
+                        // Make the symbol tiny and transparent
                         symbol: 'circle',
-                        symbolSize: 1, // Very small size
-                        symbolKeepAspect: true,
-                        itemStyle: { // Apply itemStyle here to make the symbol transparent
-                            color: 'rgba(0,0,0,0)', // Completely transparent background for the actual node point
-                            borderColor: 'rgba(0,0,0,0)', // Completely transparent border for the actual node point
+                        symbolSize: 1, 
+                        itemStyle: { 
+                            color: 'rgba(0,0,0,0)', 
+                            borderColor: 'rgba(0,0,0,0)', 
                             borderWidth: 0,
                             opacity: 1
                         },
 
                         label: {
                             show: true,
-                            // --- MODIFICATION 2: Position label to be centered on the symbol ---
-                            position: 'inside', // Renders the label inside the symbol's bounding box
+                            // Position label to be centered on the symbol
+                            position: 'inside', 
                             verticalAlign: 'middle',
-                            align: 'center', // Centers text horizontally
-                            offset: [0, 0], // No offset, so it's perfectly centered on the symbol
-                            // --- END MODIFICATION 2 ---
-
+                            align: 'center', 
+                            offset: [0, 0], 
                             fontSize: 14,
                             color: '#ffffff',
                             triggerEvent: true,
@@ -678,13 +684,12 @@
                                 padding: [4, 7],
                                 borderRadius: 4
                             },
-                            // --- MODIFICATION 3: Also make leaf symbols tiny and transparent ---
+                            // Also make leaf symbols tiny and transparent
                             itemStyle: { 
                                 color: 'rgba(0,0,0,0)',
                                 borderColor: 'rgba(0,0,0,0)',
                                 borderWidth: 0
                             }
-                            // --- END MODIFICATION 3 ---
                         },
                     }
                 ]
@@ -692,14 +697,17 @@
 
             myChart.setOption(chartOptions);
 
+            // Listen for ECharts roam events (pan/zoom)
             myChart.on('roam', onChartRoam);
 
+            // 'click' (left-click) handles expand/collapse
             myChart.on('click', (params) => {
                 if (params.componentType === 'series' && params.componentSubType === 'tree') {
-                    // Default behavior is expand/collapse, which is what we want.
+                    // Default behavior is expand/collapse
                 }
             });
 
+            // 'contextmenu' (right-click) opens the modal
             myChart.on('contextmenu', (params) => {
                 params.event.event.preventDefault();
                 
