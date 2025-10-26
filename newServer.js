@@ -1,11 +1,18 @@
 // --- IMPORTS ---
-import { GoogleGenAI } from "@google/genai"; // Use the SDK
+import { GoogleGenAI } from "@google/genai";
 import express from 'express';
 import cors from 'cors';
+import path from 'path'; // <-- ADD THIS
+import { fileURLToPath } from 'url'; // <-- ADD THIS
 
 // --- CONFIGURATION ---
 const app = express();
 const port = 3000;
+
+// --- !! NEW: ES Module Path Setup !! ---
+// This is necessary to get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // --- API KEY AUTHENTICATION ---
 const API_KEY = process.env.GEMINI_API_KEY;
@@ -14,9 +21,9 @@ if (!API_KEY) {
     console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     console.error("Error: GEMINI_API_KEY environment variable is not set!");
     console.error("Please restart the server using the command:");
-    console.error("GEMINI_API_KEY='your-key-here' node server.js");
+    console.error("GEMINI_API_KEY='your-key-here' node newServer.js");
     console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    process.exit(1); // Stop the server
+    process.exit(1);
 }
 
 // --- SDK INITIALIZATION ---
@@ -37,12 +44,37 @@ try {
 app.use(cors());
 app.use(express.json());
 
-// --- THE API ENDPOINT ---
+// --- !! NEW: SERVE STATIC FILES !! ---
+// Tell Express to serve all files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// --- !! NEW: DEFINE PAGE ROUTES !! ---
+// This ensures that visiting /login serves login.html, etc.
+
+// '/' (root) serves the index.html page (our landing page)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// '/login' serves login.html
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// '/signup' serves signup.html
+app.get('/signup', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'signup.html'));
+});
+
+// '/app' serves the main application (app.html)
+app.get('/app', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'app.html'));
+});
+
+// --- THE API ENDPOINT (This is unchanged) ---
 app.post('/get-skills', async (req, res) => {
     try {
         const userPrompt = req.body.prompt;
-
-        // --- !! UPDATED BROADER PROMPT - FINAL !! ---
         const fullPrompt = `
             You are an expert assistant knowledgeable in various topics like Math, Chess, Coffee, etc.
             A user is asking about the topic: "${userPrompt}"
@@ -80,27 +112,23 @@ app.post('/get-skills', async (req, res) => {
             4. Do not add trailing commas after the last item in an array or object.
             Failure to follow these rules will result in invalid JSON.
         `;
-        // --- !! END UPDATED PROMPT !! ---
 
         console.log(`Sending prompt to Gemini SDK for topic: ${userPrompt}`);
 
-        // --- SDK LOGIC ---
         const result = await genAI.models.generateContent({
-            model: "gemini-2.5-flash-lite", // Your selected model
+            model: "gemini-2.5-flash-lite",
             contents: [{ parts: [{ text: fullPrompt }] }],
             generationConfig: {
                 responseMimeType: "application/json"
             }
         });
 
-        // --- Corrected Response Handling ---
         console.log("--- Full AI Result (for debugging) ---");
         console.log(JSON.stringify(result, null, 2));
         console.log("-----------------------------------");
 
         if (!result?.candidates?.[0]?.content?.parts?.[0]?.text) {
             console.error("Error: Unexpected AI response structure.");
-            // Log safety/finish reasons if available
              if (result?.promptFeedback) {
                  console.error("Prompt Feedback:", JSON.stringify(result.promptFeedback, null, 2));
              }
@@ -118,7 +146,6 @@ app.post('/get-skills', async (req, res) => {
         console.log(skillDataJson);
         console.log("-----------------------------------------");
 
-        // Clean potential Markdown fences (though responseMimeType should prevent this)
         if (skillDataJson.startsWith("```json")) {
             skillDataJson = skillDataJson.substring(7);
         }
@@ -131,7 +158,6 @@ app.post('/get-skills', async (req, res) => {
         console.log(skillDataJson);
         console.log("------------------------");
 
-        // --- Parse the JSON ---
         let skillData;
         try {
             skillData = JSON.parse(skillDataJson);
@@ -140,8 +166,7 @@ app.post('/get-skills', async (req, res) => {
             console.error("Cleaned JSON String:", skillDataJson);
             throw new Error(`AI returned invalid JSON even after cleaning: ${parseError.message}`);
         }
-
-        // Send the clean JSON back to the frontend
+        
         res.json(skillData);
 
     } catch (error) {
@@ -150,13 +175,13 @@ app.post('/get-skills', async (req, res) => {
     }
 });
 
-// --- START THE SERVER ---
+// --- START THE SERVER (This is unchanged) ---
 console.log("Attempting to start the server...");
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
     console.log("Using API Key for authentication.");
-    console.log("Make sure you started the server with GEMINI_API_KEY='...' node server.js");
+    console.log("Make sure you started the server with GEMINI_API_KEY='...' node newServer.js");
 });
 
 console.log(`Server has been told to listen on port ${port}. Waiting for 'Server running...' message.`);
