@@ -2,10 +2,10 @@
   "name": "neux-hackathon",
   "version": "1.0.0",
   "description": "Learn Everything",
-  "main": "server.js",
+  "main": "newServer.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node newServer.js"
   },
   "repository": {
     "type": "git",
