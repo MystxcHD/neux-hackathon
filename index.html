@@ -18,6 +18,7 @@
             --dot-color: #3a3a3a;
             --icon-color-2: #3b82f6; 
             --label-bg: rgba(30, 30, 30, 0.75);
+            --error-color: #f87171; /* For error messages */
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -40,10 +41,9 @@
             width: 100%;
             height: 100%;
             position: relative;
-            /* Dotted background from D3 file */
             background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
             background-size: 20px 20px;
-            background-position: center;
+            background-position: 0 0;
         }
 
         /* Initial placeholder text */
@@ -56,9 +56,10 @@
             font-size: 1.2rem;
             text-align: center;
             z-index: 5;
+            line-height: 1.6;
         }
 
-        /* Floating panel */
+        /* Floating panel (no changes) */
         #floating-panel {
             position: fixed;
             left: calc(100vw - 344px);
@@ -96,7 +97,7 @@
         #collapse-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
         #collapse-btn svg { width: 20px; height: 20px; stroke-width: 2.5; transition: transform 0.2s ease-in-out; }
 
-        /* Form styling */
+        /* Form styling (no changes) */
         #prompt-form {
             padding: 24px;
             flex: 1;
@@ -121,13 +122,13 @@
         #generate-btn:hover { background-color: #c0c0c0; }
         #generate-btn svg { width: 20px; height: 20px; stroke: var(--accent-primary-text); }
 
-        /* Collapsed State */
+        /* Collapsed State (no changes) */
         #floating-panel.is-collapsed { min-height: 0; height: auto; }
         #floating-panel.is-collapsed #prompt-form { display: none; }
         #floating-panel.is-collapsed header { border-bottom: none; }
         #floating-panel.is-collapsed #collapse-btn svg { transform: rotate(180deg); }
         
-        /* Responsive layout */
+        /* Responsive layout (no changes) */
         @media (max-width: 768px) {
             #floating-panel {
                 top: auto; left: 0; bottom: 0; width: 100%; max-height: 50vh;
@@ -142,7 +143,7 @@
             #floating-panel.is-collapsed { max-height: 72px; overflow: hidden; }
         }
 
-        /* Bouncing Ball Loader */
+        /* Bouncing Ball Loader (no changes) */
         .loader-container {
             position: absolute;
             top: 50%;
@@ -167,7 +168,7 @@
             to { transform: translateY(-15px); }
         }
 
-        /* Modal Window Styles (From D3 File) */
+        /* Modal Window Styles (no changes) */
         #modal-overlay {
             display: none; 
             position: fixed;
@@ -256,7 +257,7 @@
     <main id="canvas-container">
         <div id="tree-container">
             <div id="tree-placeholder">
-                <p>Enter a topic in the panel to generate a map</p>
+                <p></p>
             </div>
         </div>
     </main>
@@ -312,40 +313,20 @@
     </div>
     
     <script>
-        // --- MOCK DATABASES (Using ECharts versions) ---
-        const FAKE_SKILL_DB = {
-            "AP Calc BC": { "name": "AP Calc BC", "children": [ { "name": "Derivatives" }, { "name": "Integrals" }, { "name": "Limits" } ] },
-            "Derivatives": { "name": "Derivatives", "children": [ { "name": "Power Rule" }, { "name": "Product Rule" }, { "name": "Quotient Rule" }, { "name": "Chain Rule" } ] },
-            "Integrals": { "name": "Integrals", "children": [ { "name": "Basic Antiderivatives" }, { "name": "U-Substitution" }, { "name": "Integration by Parts" } ] },
-            "Power Rule": { "name": "Power Rule", "children": [ { "name": "Understanding Exponents" }, { "name": "Finding d/dx of x^n" } ] },
-            "Limits": { "name": "Limits", "children": [ { "name": "One-Sided Limits" }, { "name": "Limits at Infinity" } ] },
-            "Chain Rule": { "name": "Chain Rule", "children": [ { "name":"Composite Functions" }, { "name": "Implicit Differentiation" } ] },
-            "Understanding Exponents": { "name": "Understanding Exponents", "children": [ { "name": "Integer Exponents" }, { "name": "Rational Exponents" } ] },
-            "Composite Functions": { "name": "Composite Functions", "children": [ { "name": "Definition of Composite Functions" }, { "name":"Evaluating Composite Functions" } ] }
-        };
-
-        const FAKE_PROBLEM_DB = {
-            "Derivatives": {
-                problems: [ { q: "Find the derivative of f(x) = 5x³ + 2x - 1", s: "f'(x) = 15x² + 2" } ],
-                videos: [ { title: "Introduction to Derivatives (Khan Academy)", url: "#" } ]
-            },
-            "Power Rule": {
-                problems: [ { q: "What is the derivative of y = x⁷ ?", s: "y' = 7x⁶" }, { q: "Find f'(x) for f(x) = 4√x", s: "f'(x) = 2 / √x" } ],
-                videos: [ { title: "The Power Rule (Khan Academy)", url: "#" } ]
-            },
-            "Understanding Exponents": {
-                problems: [ { q: "Simplify x^2 * x^3", s: "x^(2+3) = x^5" }, { q: "Simplify (y^4)^2", s: "y^(4*2) = y^8" } ],
-                videos: [ { title: "Laws of Exponents (Math Antics)", url: "#" } ]
-            }
-        };
-        // --- END MOCK DATABASES ---
-
+        // --- REMOVED MOCK DATABASES ---
         
-        // --- Panel/Modal Logic (From D3 File) ---
+        // --- NEW: Caching for API results ---
+        const skillCache = {};
+
+        // --- NEW: Server URL ---
+        const API_URL = 'http://localhost:3000/get-skills';
+        
+        // --- Global variables (unchanged) ---
         let currentModalSkill = null;
-        let myChart = null; // Keep a reference to the chart instance
+        let myChart = null; 
 
         document.addEventListener('DOMContentLoaded', () => {
+            // All DOM element references (unchanged)
             const panel = document.getElementById('floating-panel');
             const collapseBtn = document.getElementById('collapse-btn');
             const promptForm = document.getElementById('prompt-form');
@@ -354,17 +335,19 @@
             const modalClose = document.getElementById('modal-close');
             const generateMoreBtn = document.getElementById('modal-generate-more');
             const panelHeader = panel.querySelector('header');
+            const treeContainer = document.getElementById('tree-container');
             
-            // --- Form Submit Handler ---
+            // --- Form Submit Handler (unchanged) ---
             promptForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const prompt = promptInput.value.trim();
                 if (prompt) {
+                    // This now triggers the API call
                     fetchAndDrawTree(prompt);
                 }
             });
 
-            // --- Panel Dragging Logic ---
+            // --- Panel Dragging Logic (unchanged) ---
             let isDraggingPanel = false;
             let startDragX, startDragY, startPanelX, startPanelY;
             if (window.innerWidth > 768) {
@@ -401,16 +384,17 @@
                 document.removeEventListener('mouseup', onPanelDragEnd);
             }
 
-            // --- Panel Collapse ---
+            // --- Panel Collapse (unchanged) ---
             collapseBtn.addEventListener('click', () => {
                 panel.classList.toggle('is-collapsed');
             });
             
-            // --- Modal Listeners ---
+            // --- Modal Listeners (unchanged) ---
             modalClose.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', (e) => {
                 if (e.target === modalOverlay) closeModal();
             });
+            // This button now triggers a new API call for the selected skill
             generateMoreBtn.addEventListener('click', () => {
                 if (currentModalSkill) {
                     closeModal();
@@ -418,9 +402,59 @@
                     promptInput.value = currentModalSkill;
                 }
             });
+            let isPanningBg = false;
+            let startBgX = 0, startBgY = 0;
+            let startMouseX = 0, startMouseY = 0;
+
+            treeContainer.addEventListener('mousedown', (e) => {
+                // Only pan with left click
+                if (e.button !== 0) return;
+                
+                // We only want to pan if we click the background,
+                // not an ECharts node/label (which is a canvas).
+                // We check if the target is the container itself or its direct canvas child.
+                const canvas = treeContainer.querySelector('canvas');
+                if (e.target !== treeContainer && e.target !== canvas) {
+                    return; 
+                }
+
+                isPanningBg = true;
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+
+                // Get current background position
+                const bgPos = window.getComputedStyle(treeContainer).backgroundPosition.split(' ');
+                startBgX = parseFloat(bgPos[0]);
+                startBgY = parseFloat(bgPos[1]);
+                
+                treeContainer.style.cursor = 'grabbing'; // Visual feedback
+
+                document.addEventListener('mousemove', onBgDrag);
+                document.addEventListener('mouseup', onBgDragEnd, { once: true });
+            });
+
+            function onBgDrag(e) {
+                if (!isPanningBg) return;
+                // prevent text selection while dragging
+                e.preventDefault(); 
+                
+                const deltaX = e.clientX - startMouseX;
+                const deltaY = e.clientY - startMouseY;
+
+                const newBgX = startBgX + deltaX;
+                const newBgY = startBgY + deltaY;
+
+                treeContainer.style.backgroundPosition = `${newBgX}px ${newBgY}px`;
+            }
+
+            function onBgDragEnd() {
+                isPanningBg = false;
+                treeContainer.style.cursor = 'default'; // Reset cursor
+                document.removeEventListener('mousemove', onBgDrag);
+            }
         });
 
-        // --- Tree Generation Logic ---
+        // --- NEW: Tree Generation Logic (Using fetch) ---
         async function fetchAndDrawTree(prompt) {
             const treeContainer = document.getElementById('tree-container');
             // Show loader
@@ -432,45 +466,82 @@
                 </div>
             `;
             
-            // Fake API delay
-            await new Promise(resolve => setTimeout(resolve, 1000)); 
-            
-            // Check if prompt exists, default to "AP Calc BC"
-            const rootSkillName = FAKE_SKILL_DB[prompt] ? prompt : "AP Calc BC";
-            
-            // Build the tree data using the ECharts function
-            const initialData = buildFullTree(rootSkillName); 
-            
-            // Draw the ECharts tree
-            drawEChartTree(initialData);
+            // 1. Check cache first
+            if (skillCache[prompt]) {
+                console.log(`Loading "${prompt}" from cache...`);
+                drawEChartTree(skillCache[prompt]);
+                return;
+            }
+
+            // 2. If not in cache, fetch from server
+            console.log(`Fetching "${prompt}" from API...`);
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: prompt }),
+                });
+
+                if (!response.ok) {
+                    // Handle HTTP errors (like 500)
+                    const errorData = await response.json();
+                    throw new Error(errorData.details || `Server error: ${response.status}`);
+                }
+
+                const skillData = await response.json();
+
+                // 3. Cache and draw
+                skillCache[prompt] = skillData; // Save to cache
+                drawEChartTree(skillData);
+
+            } catch (error) {
+                // Handle fetch errors (server down) or parsing errors
+                console.error('Failed to fetch and draw tree:', error);
+                treeContainer.innerHTML = `
+                    <div id="tree-placeholder" style="color: var(--error-color);">
+                        <p><strong>Error:</strong> Could not load data.</p>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                            ${error.message}.<br>
+                            Please ensure the server is running on ${API_URL}
+                        </p>
+                    </div>
+                `;
+            }
         }
 
-        // --- Modal Functions (From D3 File) ---
+        // --- NEW: Modal Function (Simplified) ---
         function openModal(nodeData) {
+            // nodeData is the object from the ECharts chart
             currentModalSkill = nodeData.name;
             document.getElementById('modal-title').textContent = nodeData.name;
-            const skillContent = FAKE_PROBLEM_DB[nodeData.name];
+            
             const problemsContainer = document.getElementById('practice-problems');
             const videosContainer = document.getElementById('video-tutorials');
             problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
             videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
 
-            if (skillContent && skillContent.problems) {
-                skillContent.problems.forEach(prob => {
+            // Check if the node itself has the data (it's the root node of the current view)
+            // OR if we have fetched it before and it's in the cache.
+            const skillContent = nodeData.practiceProblems ? nodeData : skillCache[nodeData.name];
+
+            if (skillContent && skillContent.practiceProblems) {
+                skillContent.practiceProblems.forEach(prob => {
                     const el = document.createElement('div');
                     el.className = 'problem';
                     el.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
                     problemsContainer.appendChild(el);
                 });
             } else {
-                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found.</p>';
+                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found for this sub-topic. Click "Go Deeper" to fetch them.</p>';
             }
             
-            if (skillContent && skillContent.videos) {
-                 skillContent.videos.forEach(vid => {
+            if (skillContent && skillContent.videoTutorials) {
+                 skillContent.videoTutorials.forEach(vid => {
                     const el = document.createElement('a');
                     el.className = 'video-link';
-                    el.href = vid.url;
+                    el.href = vid.url || '#'; // Use '#' as a fallback
                     el.target = '_blank';
                     el.textContent = `▶ ${vid.title}`;
                     videosContainer.appendChild(el);
@@ -481,87 +552,73 @@
             
             document.getElementById('modal-overlay').style.display = 'flex';
         }
+
+        // --- Modal Close (unchanged) ---
         function closeModal() {
             document.getElementById('modal-overlay').style.display = 'none';
             currentModalSkill = null;
         }
 
-        // --- ECHARTS DATA PREP FUNCTION ---
-        function buildFullTree(skillName) {
-            const nodeData = FAKE_SKILL_DB[skillName];
-            if (!nodeData) {
-                return { name: skillName, children: [] };  
-            }
-            
-            let newNode = { name: nodeData.name };  
-            if (nodeData.children && nodeData.children.length > 0) {
-                newNode.children = nodeData.children.map(child => buildFullTree(child.name));
-            } else {
-                newNode.children = [];  
-            }
-            
-            return newNode;
-        }
+        // --- REMOVED: buildFullTree() ---
 
-        // --- ECHARTS DRAWING FUNCTION ---
+        // --- ECHARTS DRAWING FUNCTION (UPDATED) ---
         const animationDuration = 500;  
         function drawEChartTree(data) {
             const treeContainer = document.getElementById('tree-container');
             treeContainer.innerHTML = ''; // Clear loader
             
-            // Dispose of old chart instance if it exists
             if (myChart) {
                 myChart.dispose();
             }
             myChart = echarts.init(treeContainer, null, { renderer: 'canvas' });  
 
+            // Check depth to auto-expand the first level
             let treeDepth = 0;  
-
             if (data.children && data.children.length > 0) {
-                data.symbolSize = 1;
                 treeDepth = 1; 
             }
 
             const chartOptions = {
-                backgroundColor: 'transparent', // Let the CSS background show
+                backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'item',
                     triggerOn: 'mousemove',
                     backgroundColor: 'rgba(30, 30, 30, 0.9)',  
                     borderColor: '#555',
                     borderWidth: 1,
-                    textStyle: { color: '#f0f0f0' }
+                    textStyle: { color: '#f0f0f0' },
+                    formatter: (params) => params.data.name
                 },
                 series: [
                     {
                         type: 'tree',
-                        data: [data],  
+                        data: [data],
                         layout: 'radial',  
-                        roam: true,  
+                        roam: false,  // <-- *** THIS IS THE CHANGE *** (was 'true')
                         expandAndCollapse: true,
                         animationDuration: animationDuration,  
                         initialTreeDepth: treeDepth,  
                         symbol: 'circle',
-                        symbolSize: 1, 
+                        symbolSize: 8,
                         label: { 
                             show: true,  
                             position: 'auto',  
                             verticalAlign: 'middle',
                             align: 'auto',  
                             fontSize: 14, 
-                            color: '#f0f0f0', 
+                            color: 'var(--text-primary)', 
                             triggerEvent: true,  
                             rotate: 0,  
-                            backgroundColor: 'rgba(30, 30, 30, 0.75)',  
+                            backgroundColor: 'var(--label-bg)',  
                             padding: [4, 7],  
                             borderRadius: 4, 
                             emphasis: { 
                                 color: '#ffffff',
-                                focus: 'ancestor' 
+                                focus: 'descendant'
                             }
                         },
                         lineStyle: { 
-                            color: '#a0a0a0',  
+                            color: 'var(--text-secondary)',  
                             width: 1.5,  
                             curveness: 0.5,
                             opacity: 0.9  
@@ -569,24 +626,24 @@
                         leaves: { 
                             label: {
                                 show: true,  
-                                color: '#f0f0f0', 
-                                backgroundColor: 'rgba(30, 30, 30, 0.75)',  
+                                color: 'var(--text-primary)', 
+                                backgroundColor: 'var(--label-bg)',  
                                 padding: [4, 7],  
                                 borderRadius: 4,
                                 emphasis: { 
                                     color: '#ffffff',
-                                    focus: 'ancestor' 
+                                    focus: 'descendant' 
                                 }
                             },
                             itemStyle: { 
-                                color: '#1e1e1e', 
-                                borderColor: '#a0a0a0',
+                                color: 'var(--surface1-color)', 
+                                borderColor: 'var(--text-secondary)',
                                 borderWidth: 1.5  
                             }
                         },
                         itemStyle: { 
-                            color: '#666', 
-                            borderColor: '#3b82f6',
+                            color: 'var(--surface1-color)',
+                            borderColor: 'var(--icon-color-2)',
                             borderWidth: 1.5,
                             opacity: 1  
                         }
@@ -597,16 +654,9 @@
             myChart.setOption(chartOptions);
 
             // --- Click Handler ---
-            // This will call the GLOBAL openModal function
             myChart.on('click', (params) => {
                 if (params.componentType === 'series' && params.componentSubType === 'tree') {
-                    const nodeData = params.data;
-                    
-                    if (nodeData.children && nodeData.children.length === 0) {
-                        openModal(nodeData);
-                    } else if (!nodeData.children) {
-                        openModal(nodeData);
-                    }
+                    openModal(params.data);
                 }
             });
 
@@ -615,6 +665,8 @@
                 if (myChart) {
                     myChart.resize();
                 }
+
+            
             });
         }
     </script>
