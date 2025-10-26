@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Concept Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #101010;
+            --surface1-color: #1e1e1e;
+            --text-primary: #f0f0f0;
+            --text-secondary: #a0a0a0;
+            --accent-primary: #e0e0e0;
+            --accent-primary-text: #101010;
+            --border-color: #333;
+            --dot-color: #3a3a3a;
+            --icon-color-2: #3b82f6;
+            --label-bg: rgba(30, 30, 30, 0.75);
+            --error-color: #f87171;
+        }
+
+                /* --- History Section Styles --- */
+        #history-section {
+            margin-bottom: 20px;
+        }
+        #history-toggle { /* The clickable label */
+            display: block;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            cursor: pointer; /* Indicate it's clickable */
+            user-select: none; /* Prevent text selection */
+            position: relative; /* For positioning the triangle */
+        }
+        /* Add the expand/collapse triangle icon */
+        #history-toggle::after {
+            content: '▶';
+            position: absolute;
+            right: 5px;
+            top: 2px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            transition: transform 0.2s ease-in-out;
+        }
+        /* Rotate triangle when the section is open */
+        #history-toggle.is-open::after {
+            transform: rotate(90deg);
+        }
+
+        /* Container for the history tags */
+        #history-content {
+            display: none; /* Collapsed by default */
+            flex-wrap: wrap; /* Allow tags to wrap */
+            gap: 8px; /* Spacing between tags */
+            max-height: 110px; /* Limit height to prevent taking too much space */
+            overflow-y: auto; /* Add scrollbar if there are many tags */
+        }
+        /* Style to show the content when the toggle is active */
+        #history-content.is-open {
+            display: flex; /* Show tags using flexbox */
+        }
+
+        /* Individual history tag button style */
+        .history-tag {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 20px; /* Pill shape */
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s; /* Smooth hover effect */
+            white-space: nowrap; /* Prevent tags from breaking lines */
+        }
+        /* Hover effect for tags */
+        .history-tag:hover {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+            border-color: #555;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); }
+        #tree-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: 0 0;
+        }
+
+        /* Placeholder when no tree is drawn */
+        #tree-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            text-align: center;
+            z-index: 5;
+            line-height: 1.6;
+            pointer-events: none;
+        }
+
+        /* Floating panel */
+        #floating-panel {
+            position: fixed;
+            left: calc(100vw - 344px);
+            top: 24px;
+            width: 320px;
+            min-width: 280px;
+            min-height: 200px;
+            max-height: calc(100vh - 48px);
+            background-color: var(--surface1-color);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        /* Header now split into left/right for better layout */
+        #floating-panel header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: move;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        /* left: logo + title */
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--icon-color-2), var(--accent-primary));
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+            flex: 0 0 40px;
+        }
+        .title-wrap { display:flex; flex-direction: column; line-height: 1; }
+        header h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); }
+        header .subtitle { font-size: 0.85rem; color: var(--text-secondary); }
+
+        #collapse-btn {
+            background: none; border: none; color: var(--text-secondary); cursor: pointer;
+            padding: 6px; margin-top: -4px; border-radius: 6px;
+            transition: background-color 0.2s, color 0.2s;
+            display:flex; align-items:center; justify-content:center;
+        }
+        #collapse-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
+        #collapse-btn svg { width: 20px; height: 20px; stroke-width: 2.5; transition: transform 0.2s ease-in-out; }
+
+        #prompt-form {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .input-section { flex: 1; display: flex; flex-direction: column; text-align: left; }
+        .input-section label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 12px; }
+        .input-section textarea {
+            width: 100%; flex: 1; min-height: 100px; background-color: var(--bg-color);
+            border: 1px solid #444; border-radius: 10px; padding: 12px;
+            font-family: inherit; font-size: 1rem; color: var(--text-primary); resize: vertical;
+        }
+        .input-section textarea::placeholder { color: #666; }
+
+        #generate-btn {
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            width: 100%; padding: 12px; margin-top: 12px; background-color: var(--accent-primary);
+            color: var(--accent-primary-text); border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 700; cursor: pointer; transition: background-color 0.2s ease;
+        }
+        #generate-btn:hover { background-color: #c0c0c0; }
+        #generate-btn svg { width: 20px; height: 20px; stroke: var(--accent-primary-text); }
+
+        #floating-panel.is-collapsed { min-height: 0; height: auto; }
+        #floating-panel.is-collapsed #prompt-form { display: none; }
+        #floating-panel.is-collapsed header { border-bottom: none; }
+        #floating-panel.is-collapsed #collapse-btn svg { transform: rotate(180deg); }
+
+        @media (max-width: 768px) {
+            #floating-panel {
+                top: auto; left: 0; bottom: 0; width: 100%; max-height: 50vh;
+                border-radius: 16px 16px 0 0; border: none; border-top: 1px solid var(--border-color);
+                box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+            }
+            #floating-panel header { cursor: default; padding: 20px 20px 12px 20px; }
+            #prompt-form { padding: 20px; }
+            header h1 { font-size: 1.1rem; }
+            header .subtitle { font-size: 0.9rem; }
+            .input-section textarea { min-height: 100px; flex: 0 1 120px; }
+            #floating-panel.is-collapsed { max-height: 72px; overflow: hidden; }
+        }
+
+        /* small loader */
+        .loader-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            gap: 12px;
+            z-index: 5;
+        }
+        .loader-dot { width: 16px; height: 16px; border-radius: 50%; background-color: var(--accent-primary); animation: bounce 0.6s infinite alternate; }
+        .loader-dot:nth-child(2) { animation-delay: 0.2s; }
+        .loader-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+
+        /* Modal */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; }
+        #modal-content { background-color: var(--surface1-color); padding: 24px; border-radius: 16px; border: 1px solid #333; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; position: relative; }
+        #modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
+        #modal-close:hover { color: var(--text-primary); }
+        #modal-title { font-size: 1.75rem; font-weight: 600; margin-bottom: 20px; }
+        .modal-section { margin-bottom: 24px; }
+        .modal-section h3 { font-size: 1.1rem; font-weight: 600; color: var(--icon-color-2); border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 12px; }
+        .problem { margin-bottom: 16px; }
+        .problem p { margin-bottom: 8px; font-size: 1.1rem; }
+        .problem .solution { font-family: monospace; background-color: var(--bg-color); padding: 12px; border-radius: 8px; border: 1px solid #333; font-size: 0.9rem; white-space: pre-wrap; }
+        .video-link { display: block; color: var(--text-secondary); text-decoration: none; margin-bottom: 8px; }
+        .video-link:hover { color: var(--accent-primary); }
+        #modal-generate-more { display: block; width: 100%; padding: 12px; background-color: var(--icon-color-2); color: var(--text-primary); border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        #modal-generate-more:hover { background-color: #4a94f7; }
+        #modal-generate-more:disabled { background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed; }
+
+
+        /* error block style */
+        .error-block {
+            position: absolute;
+            top: 32px;
+            left: 32px;
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.18);
+            color: var(--error-color);
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 6;
+            max-width: calc(100% - 64px);
+        }
+    </style>
+</head>
+<body>
+    <main id="canvas-container">
+        <div id="tree-container">
+            <div id="tree-placeholder"></div>
+        </div>
+    </main>
+
+    <aside id="floating-panel">
+        <header>
+            <div class="header-left">
+                <div class="logo-icon" aria-hidden="true"></div>
+                <div class="title-wrap">
+                    <h1>Concept Visualizer</h1>
+                    <p class="subtitle">Enter any topic to visualize it as an interactive map</p>
+                </div>
+            </div>
+
+            <button id="collapse-btn" aria-label="Collapse panel" title="Collapse panel">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                </svg>
+            </button>
+        </header>
+
+        <form id="prompt-form">
+            <section id="history-section">
+                <label id="history-toggle">Recent Topics</label>
+                <div id="history-content">
+                    </div>
+            </section>
+            <section class="input-section">
+                <label for="problem-input">Enter a topic or idea</label>
+                <textarea id="problem-input" name="prompt" placeholder="e.g., 'Calculus' or 'History of the Roman Empire'" aria-label="Topic input"></textarea>
+                <button type="submit" id="generate-btn" aria-label="Generate map">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.036a3.375 3.375 0 0 0 2.456 2.455L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"></path></svg>
+                    Generate Map
+                </button>
+            </section>
+        </form>
+    </aside>
+
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <button id="modal-close" title="Close">&times;</button>
+            <h2 id="modal-title">Skill Name</h2>
+            <div class="modal-section" id="practice-problems">
+                <h3>Practice Problems</h3>
+            </div>
+            <div class="modal-section" id="video-tutorials">
+                <h3>Video Tutorials</h3>
+            </div>
+            <div class="modal-section" id="generate-more">
+                <h3>Go Deeper</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                    Generate a new tree based on this specific skill.
+                </p>
+                <button id="modal-generate-more">Generate More Specifics</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Caching, API url, and Global State ---
+        const skillCache = {};
+        const API_URL = '/get-skills';
+
+        let currentModalSkill = null;
+        let myChart = null;
+        
+        let currentBgPosX = 0;
+        let currentBgPosY = 0;
+        let currentBgSize = 20; 
+
+        // --- History Section ---
+        const HISTORY_KEY = 'conceptVisualizerHistory';
+        const MAX_HISTORY_ITEMS = 15;
+
+        /**
+         * Gets the history array from localStorage.
+         * @returns {string[]} An array of search topics.
+         */
+        function getHistory() {
+            const history = localStorage.getItem(HISTORY_KEY);
+            return history ? JSON.parse(history) : [];
+        }
+
+        /**
+         * Saves the history array to localStorage.
+         * @param {string[]} history - The array of topics to save.
+         */
+        function saveHistory(history) {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        }
+
+        /**
+         * Adds a new topic to the history, manages duplicates, and limits size.
+         * @param {string} topic - The topic string to add.
+         */
+        function addTopicToHistory(topic) {
+            let history = getHistory();
+            
+            // Remove the topic if it already exists (to move it to the front)
+            const existingIndex = history.indexOf(topic);
+            if (existingIndex > -1) {
+                history.splice(existingIndex, 1);
+            }
+
+            // Add the new topic to the beginning of the list
+            history.unshift(topic);
+
+            // Enforce the maximum number of history items
+            if (history.length > MAX_HISTORY_ITEMS) {
+                history = history.slice(0, MAX_HISTORY_ITEMS);
+            }
+
+            // Save and re-render
+            saveHistory(history);
+            renderHistoryTags(history);
+        }
+
+        /**
+         * Renders the history tags in the UI.
+         * @param {string[]} history - An array of topics.
+         */
+        function renderHistoryTags(history) {
+            const historyContent = document.getElementById('history-content');
+            historyContent.innerHTML = ''; // Clear existing tags
+
+            if (history.length === 0) {
+                // Show a message if history is empty
+                historyContent.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.85rem; width: 100%; text-align: center; padding: 10px 0;">No recent topics.</p>';
+                return;
+            }
+
+            // Create and append a button for each topic
+            history.forEach(topic => {
+                const tag = document.createElement('button');
+                tag.className = 'history-tag';
+                tag.textContent = topic;
+                tag.type = 'button'; // Prevent form submission
+                
+                // Add click listener to search for this topic
+                tag.addEventListener('click', () => onHistoryTagClick(topic));
+                
+                historyContent.appendChild(tag);
+            });
+        }
+
+        /**
+         * Handles the click event for a history tag.
+         * @param {string} topic - The topic to search for.
+         */
+        function onHistoryTagClick(topic) {
+            // Set the value in the textarea
+            document.getElementById('problem-input').value = topic;
+            // Run the search
+            fetchAndDrawTree(topic);
+        }
+
+        /**
+         * Loads history from localStorage and renders the tags on page load.
+         */
+        function loadHistory() {
+            const history = getHistory();
+            renderHistoryTags(history);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const panel = document.getElementById('floating-panel');
+            const collapseBtn = document.getElementById('collapse-btn');
+            const promptForm = document.getElementById('prompt-form');
+            const promptInput = document.getElementById('problem-input');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalClose = document.getElementById('modal-close');
+            const generateMoreBtn = document.getElementById('modal-generate-more');
+            const panelHeader = panel.querySelector('header');
+            const treeContainer = document.getElementById('tree-container');
+            const historyToggle = document.getElementById('history-toggle');
+            const historyContent = document.getElementById('history-content');
+
+            // submit handler
+            promptForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const prompt = promptInput.value.trim();
+                if (prompt) {
+                    fetchAndDrawTree(prompt);
+                    addTopicToHistory(prompt);
+                }
+            });
+
+            // dragging panel (desktop only)
+            let isDraggingPanel = false;
+            let startDragX, startDragY, startPanelX, startPanelY;
+            if (window.innerWidth > 768) {
+                panelHeader.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0 || e.target.closest('button, input, textarea, a, #collapse-btn')) return;
+                    isDraggingPanel = true;
+                    panel.style.userSelect = 'none';
+                    startDragX = e.clientX;
+                    startDragY = e.clientY;
+                    const rect = panel.getBoundingClientRect();
+                    startPanelX = rect.left;
+                    startPanelY = rect.top;
+                    document.addEventListener('mousemove', onPanelDrag);
+                    document.addEventListener('mouseup', onPanelDragEnd);
+                });
+            }
+            function onPanelDrag(e) {
+                if (!isDraggingPanel) return;
+                const deltaX = e.clientX - startDragX, deltaY = e.clientY - startDragY;
+                let newX = startPanelX + deltaX, newY = startPanelY + deltaY;
+                const vpWidth = window.innerWidth, vpHeight = window.innerHeight;
+                const pWidth = panel.offsetWidth, pHeight = panel.offsetHeight;
+                newX = Math.max(10, Math.min(newX, vpWidth - pWidth - 10));
+                newY = Math.max(10, Math.min(newY, vpHeight - pHeight - 10));
+                panel.style.left = newX + 'px';
+                panel.style.top = newY + 'px';
+                panel.style.right = 'auto';
+                panel.style.bottom = 'auto';
+            }
+            function onPanelDragEnd() {
+                isDraggingPanel = false;
+                panel.style.userSelect = 'auto';
+                document.removeEventListener('mousemove', onPanelDrag);
+                document.removeEventListener('mouseup', onPanelDragEnd);
+            }
+
+            // Collapse toggle
+            collapseBtn.addEventListener('click', () => panel.classList.toggle('is-collapsed'));
+
+            // History toggle
+            historyToggle.addEventListener('click', () => {
+                historyToggle.classList.toggle('is-open');
+                historyContent.classList.toggle('is-open');
+            });
+
+            // modal listeners
+            modalClose.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+            
+            // 'generateMoreBtn' listener
+            generateMoreBtn.addEventListener('click', () => {
+                if (currentModalSkill) {
+                    expandNode(currentModalSkill);
+                }
+            });
+            
+            // --- NEW: Global wheel listener for zooming anywhere ---
+            window.addEventListener('wheel', (e) => {
+                // If the scroll is over the floating panel or modal, do nothing.
+                // This allows scrolling inside the panel's textarea or a long modal.
+                if (
+                    e.target.closest('#floating-panel') || 
+                    e.target.closest('#modal-content')
+                ) {
+                    return; // Let the browser handle scrolling for these UI elements
+                }
+                // --- END MODIFICATION ---
+
+                // If the chart doesn't exist, do nothing
+                if (!myChart) return;
+
+                // Prevent the default page scroll
+                e.preventDefault();
+
+                const zoomFactor = 1.1;
+                // e.deltaY > 0 means scrolling down (zoom out)
+                const zoomDelta = e.deltaY > 0 ? (1 / zoomFactor) : zoomFactor;
+
+                // Dispatch a 'roam' action to ECharts
+                myChart.dispatchAction({
+                    type: 'roam',
+                    zoom: zoomDelta,
+                    originX: e.clientX, // Zoom toward the mouse cursor
+                    originY: e.clientY
+                });
+            }, { passive: false }); // 'passive: false' is needed to allow preventDefault()
+
+            loadHistory(); // Load and render history tags on page load
+        });
+
+        // --- NEW: Syncs the background grid to the chart's pan/zoom ---
+        function onChartRoam(params) {
+            const treeContainer = document.getElementById('tree-container');
+            const option = myChart.getOption();
+            
+            // 1. Handle Panning (Translation)
+            if (params.dx !== 0 || params.dy !== 0) {
+                currentBgPosX += params.dx;
+                currentBgPosY += params.dy;
+            }
+
+            // 2. Handle Zooming (Scaling)
+            if (params.zoom) {
+                const newZoom = option.series[0].zoom;
+                currentBgSize = 20 * newZoom; 
+
+                const originX = params.originX;
+                const originY = params.originY;
+
+                const relX = originX - currentBgPosX;
+                const relY = originY - currentBgPosY;
+                
+                currentBgPosX -= relX * (params.zoom - 1);
+                currentBgPosY -= relY * (params.zoom - 1);
+
+                treeContainer.style.backgroundSize = `${currentBgSize}px ${currentBgSize}px`;
+            }
+            
+            // 3. Apply all transformations
+            treeContainer.style.backgroundPosition = `${currentBgPosX}px ${currentBgPosY}px`;
+        }
+
+
+        // Helper function to find a node by name in the tree data
+        function findNode(node, targetName) {
+            if (!node) return null;
+            if (node.name === targetName) {
+                return node;
+            }
+            if (node.children) {
+                for (const child of node.children) {
+                    const found = findNode(child, targetName);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        // Function to expand a node with more specifics
+        async function expandNode(prompt) {
+            const generateMoreBtn = document.getElementById('modal-generate-more');
+            const originalBtnText = generateMoreBtn.textContent;
+            generateMoreBtn.textContent = 'Generating...';
+            generateMoreBtn.disabled = true;
+
+            let newData;
+
+            try {
+                // 1. Get data (from cache or fetch)
+                if (skillCache[prompt]) {
+                    newData = skillCache[prompt];
+                    console.log("Using cached data for expansion:", prompt);
+                } else {
+                    console.log("Fetching new data for expansion:", prompt);
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: prompt }),
+                    });
+
+                    const text = await response.text();
+                    try { newData = JSON.parse(text); } catch (err) {
+                        if (!response.ok) throw new Error(`Server returned an unexpected response (${response.status})`);
+                        else throw err;
+                    }
+
+                    if (!response.ok) {
+                        const details = newData && newData.details ? newData.details : `Status ${response.status}`;
+                        throw new Error(details);
+                    }
+                    
+                    skillCache[prompt] = newData;
+                }
+
+                // 2. Find the node in the current chart data
+                if (!myChart) {
+                    throw new Error("Chart is not initialized.");
+                }
+                const currentData = myChart.getOption().series[0].data[0];
+                const targetNode = findNode(currentData, prompt);
+
+                if (targetNode) {
+                    // 3. Merge new data into the target node
+                    Object.assign(targetNode, newData);
+                    targetNode.collapsed = false;
+
+                    // 4. Update the chart
+                    myChart.setOption({
+                        series: [{
+                            data: [currentData] 
+                        }]
+                    });
+                    
+                    // 5. Close modal
+                    closeModal();
+
+                } else {
+                    throw new Error(`Could not find node "${prompt}" in the current tree.`);
+                }
+
+            } catch (error) {
+                console.error('Failed to expand node:', error);
+                alert(`Error expanding node: ${error.message}`); 
+            } finally {
+                // 6. Restore button
+                generateMoreBtn.textContent = originalBtnText;
+                generateMoreBtn.disabled = false;
+            }
+        }
+
+
+        // Fetch + draw tree (with cache)
+        async function fetchAndDrawTree(prompt) {
+            const treeContainer = document.getElementById('tree-container');
+            // show loader
+            treeContainer.innerHTML = `
+                <div class="loader-container">
+                    <div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div>
+                </div>
+            `;
+            // Reset background position for the loader
+            treeContainer.style.backgroundPosition = '0 0';
+            treeContainer.style.backgroundSize = '20px 20px'; // Reset zoom
+
+
+            if (skillCache[prompt]) {
+                drawEChartTree(skillCache[prompt]);
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt }),
+                });
+
+                const text = await response.text();
+                let skillData;
+                try { skillData = JSON.parse(text); } catch (err) {
+                    if (!response.ok) throw new Error(`Server returned an unexpected response (${response.status})`);
+                    else throw err;
+                }
+
+                if (!response.ok) {
+                    const details = skillData && skillData.details ? skillData.details : `Status ${response.status}`;
+                    throw new Error(details);
+                }
+
+                skillCache[prompt] = skillData;
+                drawEChartTree(skillData);
+            } catch (error) {
+                console.error('Failed to fetch and draw tree:', error);
+                treeContainer.innerHTML = `
+                    <div id="tree-placeholder" style="color: var(--error-color);">
+                        <p><strong>Error:</strong> Could not load data.</p>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                            ${error.message}.<br>
+                            Please ensure the server is running on ${API_URL}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        // Modal open/close
+        function openModal(nodeData) {
+            currentModalSkill = nodeData.name;
+            document.getElementById('modal-title').textContent = nodeData.name;
+            const problemsContainer = document.getElementById('practice-problems');
+            const videosContainer = document.getElementById('video-tutorials');
+            problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
+            videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
+
+            const skillContent = nodeData.practiceProblems ? nodeData : skillCache[nodeData.name];
+
+            if (skillContent && skillContent.practiceProblems) {
+                skillContent.practiceProblems.forEach(prob => {
+                    const el = document.createElement('div');
+                    el.className = 'problem';
+                    el.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
+                    problemsContainer.appendChild(el);
+                });
+            } else {
+                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found for this sub-topic. Click "Go Deeper" to fetch them.</p>';
+            }
+
+            if (skillContent && skillContent.videoTutorials) {
+                skillContent.videoTutorials.forEach(vid => {
+                    const el = document.createElement('a');
+                    el.className = 'video-link';
+                    el.href = vid.url || '#';
+                    el.target = '_blank';
+                    el.rel = 'noopener noreferrer';
+                    el.textContent = `▶ ${vid.title}`;
+                    videosContainer.appendChild(el);
+                });
+            } else {
+                videosContainer.innerHTML += '<p style="color: var(--text-secondary);">No videos found.</p>';
+            }
+
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            currentModalSkill = null;
+        }
+
+        // ECharts drawing
+        const animationDuration = 500;
+        function drawEChartTree(data) {
+            const treeContainer = document.getElementById('tree-container');
+            
+            // Reset pan and background state
+            currentBgPosX = 0;
+            currentBgPosY = 0;
+            currentBgSize = 20;
+            treeContainer.style.backgroundPosition = '0 0';
+            treeContainer.style.backgroundSize = '20px 20px';
+
+            treeContainer.innerHTML = ''; 
+
+            if (myChart) { myChart.dispose(); }
+
+            myChart = echarts.init(treeContainer, null, { renderer: 'canvas' });
+
+            // Resolve theme variables
+            const cs = getComputedStyle(document.documentElement);
+            const labelBg = (cs.getPropertyValue('--label-bg') || 'rgba(30,30,30,0.75)').trim();
+            const surfaceColor = (cs.getPropertyValue('--surface1-color') || '#1e1e1e').trim();
+            const textSecondary = (cs.getPropertyValue('--text-secondary') || '#a0a0a0').trim();
+            const iconColor2 = (cs.getPropertyValue('--icon-color-2') || '#3b82f6').trim();
+
+            let treeDepth = 0;
+            if (data.children && data.children.length > 0) treeDepth = 1;
+
+            const chartOptions = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'item',
+                    triggerOn: 'none', 
+                    backgroundColor: 'rgba(30, 30, 30, 0.9)',
+                    borderColor: '#555',
+                    borderWidth: 1,
+                    textStyle: { color: '#ffffff' },
+                    formatter: (params) => params.data.name
+                },
+                series: [
+                    {
+                        type: 'tree',
+                        data: [data],
+                        layout: 'radial',
+                        roam: true, 
+                        scaleLimit: { 
+                            min: 0.3,
+                            max: 3.0
+                        },
+                        expandAndCollapse: true,
+                        animationDuration: animationDuration,
+                        initialTreeDepth: treeDepth,
+                        
+                        // Make the symbol tiny and transparent
+                        symbol: 'circle',
+                        symbolSize: 1, 
+                        itemStyle: { 
+                            color: 'rgba(0,0,0,0)', 
+                            borderColor: 'rgba(0,0,0,0)', 
+                            borderWidth: 0,
+                            opacity: 1
+                        },
+
+                        label: {
+                            show: true,
+                            // Position label to be centered on the symbol
+                            position: 'inside', 
+                            verticalAlign: 'middle',
+                            align: 'center', 
+                            offset: [0, 0], 
+                            fontSize: 14,
+                            color: '#ffffff',
+                            triggerEvent: true,
+                            rotate: 0,
+                            backgroundColor: labelBg,
+                            padding: [4, 7],
+                            borderRadius: 4
+                        },
+
+                        lineStyle: {
+                            color: '#ffffff',
+                            width: 1.5,
+                            curveness: 0.5,
+                            opacity: 0.9
+                        },
+
+                        leaves: {
+                            label: {
+                                show: true,
+                                color: '#ffffff',
+                                backgroundColor: labelBg,
+                                padding: [4, 7],
+                                borderRadius: 4
+                            },
+                            // Also make leaf symbols tiny and transparent
+                            itemStyle: { 
+                                color: 'rgba(0,0,0,0)',
+                                borderColor: 'rgba(0,0,0,0)',
+                                borderWidth: 0
+                            }
+                        },
+                    }
+                ]
+            };
+
+            myChart.setOption(chartOptions);
+
+            // Listen for ECharts roam events (pan/zoom)
+            myChart.on('roam', onChartRoam);
+
+            // 'click' (left-click) handles expand/collapse
+            myChart.on('click', (params) => {
+                if (params.componentType === 'series' && params.componentSubType === 'tree') {
+                    // Default behavior is expand/collapse
+                }
+            });
+
+            // 'contextmenu' (right-click) opens the modal
+            myChart.on('contextmenu', (params) => {
+                params.event.event.preventDefault();
+                
+                if (params.componentType === 'series' && params.componentSubType === 'tree' && params.data) {
+                    openModal(params.data);
+                }
+            });
+
+            window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
+        }
+        
+    </script>
+</body>
+</html>

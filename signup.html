@@ -136,7 +136,7 @@
 
             try {
                 await createUserWithEmailAndPassword(auth, email, password);
-                window.location.href = 'app.html';
+                window.location.href = 'index.html';
             } catch (error) {
                 console.error("Sign Up Error:", error.code, error.message);
                 displayError(getFriendlyErrorMessage(error));
@@ -150,7 +150,7 @@
                 const provider = new GoogleAuthProvider();
                 try {
                     await signInWithPopup(auth, provider);
-                    window.location.href = 'app.html';
+                    window.location.href = 'index.html';
                 } catch (error) {
                     displayError(getFriendlyErrorMessage(error));
                 }

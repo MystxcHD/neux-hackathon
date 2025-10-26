@@ -126,7 +126,7 @@
                 const provider = new GoogleAuthProvider();
                 try {
                     await signInWithPopup(auth, provider);
-                    window.location.href = 'app.html';
+                    window.location.href = 'index.html';
                 } catch (error) {
                     displayError(getFriendlyErrorMessage(error));
                 }
@@ -149,7 +149,7 @@
 
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                window.location.href = 'app.html';
+                window.location.href = 'index.html';
             } catch (error) {
                 console.error("Log In Error:", error.code, error.message);
                 displayError(getFriendlyErrorMessage(error));

@@ -1,0 +1,28 @@
+{
+  "name": "neux-hackathon",
+  "version": "1.0.0",
+  "description": "Learn Everything",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MystxcHD/neux-hackathon.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MystxcHD/neux-hackathon/issues"
+  },
+  "homepage": "https://github.com/MystxcHD/neux-hackathon#readme",
+  "dependencies": {
+    "@google/genai": "^1.27.0",
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  }
+}
