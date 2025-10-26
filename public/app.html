@@ -878,8 +878,8 @@
             document.getElementById('modal-title').textContent = nodeData.name;
             const problemsContainer = document.getElementById('practice-problems');
             const videosContainer = document.getElementById('video-tutorials');
-            problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
-            videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
+            problemsContainer.innerHTML = '<h3>Overview</h3>';
+            videosContainer.innerHTML = '<h3>Resources</h3>';
             
             if (nodeData.practiceProblems && nodeData.practiceProblems.length > 0) {
                 nodeData.practiceProblems.forEach(prob => {
