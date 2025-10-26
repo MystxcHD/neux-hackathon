@@ -181,6 +181,8 @@
         .video-link:hover { color: var(--accent-primary); }
         #modal-generate-more { display: block; width: 100%; padding: 12px; background-color: var(--icon-color-2); color: var(--text-primary); border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
         #modal-generate-more:hover { background-color: #4a94f7; }
+        #modal-generate-more:disabled { background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed; }
+
 
         /* error block style */
         .error-block {
@@ -324,13 +326,16 @@
             // modal listeners
             modalClose.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+            
+            // MODIFIED: 'generateMoreBtn' listener
             generateMoreBtn.addEventListener('click', () => {
                 if (currentModalSkill) {
-                    closeModal();
-                    fetchAndDrawTree(currentModalSkill);
-                    promptInput.value = currentModalSkill;
+                    // This now calls the new expandNode function
+                    // which modifies the existing tree instead of replacing it.
+                    expandNode(currentModalSkill);
                 }
             });
+
 
             // Background panning (only start if click hits container background or canvas)
             let isPanningBg = false;
@@ -409,6 +414,100 @@
             }
         });
 
+        // NEW: Helper function to find a node by name in the tree data
+        function findNode(node, targetName) {
+            if (!node) return null;
+            if (node.name === targetName) {
+                return node;
+            }
+            if (node.children) {
+                for (const child of node.children) {
+                    const found = findNode(child, targetName);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        // NEW: Function to expand a node with more specifics
+        async function expandNode(prompt) {
+            const generateMoreBtn = document.getElementById('modal-generate-more');
+            const originalBtnText = generateMoreBtn.textContent;
+            generateMoreBtn.textContent = 'Generating...';
+            generateMoreBtn.disabled = true;
+
+            let newData;
+
+            try {
+                // 1. Get data (from cache or fetch)
+                if (skillCache[prompt]) {
+                    newData = skillCache[prompt];
+                    console.log("Using cached data for expansion:", prompt);
+                } else {
+                    console.log("Fetching new data for expansion:", prompt);
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: prompt }),
+                    });
+
+                    const text = await response.text();
+                    try { newData = JSON.parse(text); } catch (err) {
+                        if (!response.ok) throw new Error(`Server returned an unexpected response (${response.status})`);
+                        else throw err;
+                    }
+
+                    if (!response.ok) {
+                        const details = newData && newData.details ? newData.details : `Status ${response.status}`;
+                        throw new Error(details);
+                    }
+                    
+                    // Cache the newly fetched tree structure
+                    skillCache[prompt] = newData;
+                }
+
+                // 2. Find the node in the current chart data
+                if (!myChart) {
+                    throw new Error("Chart is not initialized.");
+                }
+                // Get the 'data' array from the first series
+                const currentData = myChart.getOption().series[0].data[0];
+                const targetNode = findNode(currentData, prompt);
+
+                if (targetNode) {
+                    // 3. Merge new data into the target node
+                    // This copies children, practiceProblems, etc.
+                    Object.assign(targetNode, newData);
+                    
+                    // Ensure it's marked as expandable
+                    targetNode.collapsed = false;
+
+                    // 4. Update the chart
+                    // We pass the modified 'currentData' (the root node) back to the chart
+                    myChart.setOption({
+                        series: [{
+                            data: [currentData] // Pass the entire modified tree data back
+                        }]
+                    });
+                    
+                    // 5. Close modal
+                    closeModal();
+
+                } else {
+                    throw new Error(`Could not find node "${prompt}" in the current tree.`);
+                }
+
+            } catch (error) {
+                console.error('Failed to expand node:', error);
+                alert(`Error expanding node: ${error.message}`); // Simple error feedback
+            } finally {
+                // 6. Restore button
+                generateMoreBtn.textContent = originalBtnText;
+                generateMoreBtn.disabled = false;
+            }
+        }
+
+
         // Fetch + draw tree (with cache)
         async function fetchAndDrawTree(prompt) {
             const treeContainer = document.getElementById('tree-container');
@@ -471,6 +570,8 @@
             problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
             videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
 
+            // MODIFIED: Check nodeData directly first, then the cache.
+            // When a node is expanded, 'practiceProblems' is merged directly into nodeData.
             const skillContent = nodeData.practiceProblems ? nodeData : skillCache[nodeData.name];
 
             if (skillContent && skillContent.practiceProblems) {
@@ -602,8 +703,20 @@
 
             myChart.setOption(chartOptions);
 
+            // 'click' (left-click) handles expand/collapse by default
             myChart.on('click', (params) => {
                 if (params.componentType === 'series' && params.componentSubType === 'tree') {
+                    // Default behavior is expand/collapse, which is what we want.
+                    // No need to call openModal here.
+                }
+            });
+
+            // 'contextmenu' (right-click) opens the modal
+            myChart.on('contextmenu', (params) => {
+                // Prevent the default browser right-click menu
+                params.event.event.preventDefault();
+                
+                if (params.componentType === 'series' && params.componentSubType === 'tree' && params.data) {
                     openModal(params.data);
                 }
             });
