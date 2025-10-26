@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Concept Visualizer</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-    
+
     <style>
         :root {
             --bg-color: #101010;
@@ -16,11 +16,11 @@
             --accent-primary-text: #101010;
             --border-color: #333;
             --dot-color: #3a3a3a;
-            --icon-color-1: #f04a94;  
-            --icon-color-2: #3b82f6; /* Blue border */
-            --label-bg: rgba(30, 30, 30, 0.9);
-            --error-color: #f87171; /* For error messages */
+            --icon-color-2: #3b82f6;
+            --label-bg: rgba(30, 30, 30, 0.75);
+            --error-color: #f87171;
         }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -28,16 +28,10 @@
             color: var(--text-primary);
             width: 100vw;
             height: 100vh;
-            overflow: hidden; 
+            overflow: hidden;
         }
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-color);
-        }
+
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); }
         #tree-container {
             width: 100%;
             height: 100%;
@@ -47,20 +41,21 @@
             background-position: 0 0;
         }
 
-        /* Initial placeholder text */
+        /* Placeholder when no tree is drawn */
         #tree-placeholder {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             color: var(--text-secondary);
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             text-align: center;
             z-index: 5;
             line-height: 1.6;
+            pointer-events: none;
         }
 
-        /* Floating panel (no changes) */
+        /* Floating panel */
         #floating-panel {
             position: fixed;
             left: calc(100vw - 344px);
@@ -78,29 +73,42 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             overflow: hidden;
         }
-        #floating-panel header { 
-            padding: 24px 24px 16px 24px;
+
+        /* Header now split into left/right for better layout */
+        #floating-panel header {
+            padding: 16px 20px;
             border-bottom: 1px solid var(--border-color);
             cursor: move;
             user-select: none;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
+            gap: 12px;
         }
-        header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
-        header .subtitle { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.4; }
+
+        /* left: logo + title */
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--icon-color-2), var(--accent-primary));
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+            flex: 0 0 40px;
+        }
+        .title-wrap { display:flex; flex-direction: column; line-height: 1; }
+        header h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); }
+        header .subtitle { font-size: 0.85rem; color: var(--text-secondary); }
+
         #collapse-btn {
             background: none; border: none; color: var(--text-secondary); cursor: pointer;
-            padding: 4px; margin-top: -4px; margin-right: -8px; border-radius: 6px;
+            padding: 6px; margin-top: -4px; border-radius: 6px;
             transition: background-color 0.2s, color 0.2s;
+            display:flex; align-items:center; justify-content:center;
         }
         #collapse-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
         #collapse-btn svg { width: 20px; height: 20px; stroke-width: 2.5; transition: transform 0.2s ease-in-out; }
 
-        /* Form styling (no changes) */
         #prompt-form {
-            padding: 24px;
+            padding: 20px;
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -110,26 +118,25 @@
         .input-section label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 12px; }
         .input-section textarea {
             width: 100%; flex: 1; min-height: 100px; background-color: var(--bg-color);
-            border: 1px solid #444; border-radius: 10px; padding: 16px;
+            border: 1px solid #444; border-radius: 10px; padding: 12px;
             font-family: inherit; font-size: 1rem; color: var(--text-primary); resize: vertical;
         }
         .input-section textarea::placeholder { color: #666; }
+
         #generate-btn {
             display: flex; justify-content: center; align-items: center; gap: 10px;
-            width: 100%; padding: 16px; margin-top: 16px; background-color: var(--accent-primary);
+            width: 100%; padding: 12px; margin-top: 12px; background-color: var(--accent-primary);
             color: var(--accent-primary-text); border: none; border-radius: 10px;
             font-size: 1rem; font-weight: 700; cursor: pointer; transition: background-color 0.2s ease;
         }
         #generate-btn:hover { background-color: #c0c0c0; }
         #generate-btn svg { width: 20px; height: 20px; stroke: var(--accent-primary-text); }
 
-        /* Collapsed State (no changes) */
         #floating-panel.is-collapsed { min-height: 0; height: auto; }
         #floating-panel.is-collapsed #prompt-form { display: none; }
         #floating-panel.is-collapsed header { border-bottom: none; }
         #floating-panel.is-collapsed #collapse-btn svg { transform: rotate(180deg); }
-        
-        /* Responsive layout (no changes) */
+
         @media (max-width: 768px) {
             #floating-panel {
                 top: auto; left: 0; bottom: 0; width: 100%; max-height: 50vh;
@@ -138,13 +145,13 @@
             }
             #floating-panel header { cursor: default; padding: 20px 20px 12px 20px; }
             #prompt-form { padding: 20px; }
-            header h1 { font-size: 1.5rem; }
+            header h1 { font-size: 1.1rem; }
             header .subtitle { font-size: 0.9rem; }
             .input-section textarea { min-height: 100px; flex: 0 1 120px; }
             #floating-panel.is-collapsed { max-height: 72px; overflow: hidden; }
         }
 
-        /* Bouncing Ball Loader (no changes) */
+        /* small loader */
         .loader-container {
             position: absolute;
             top: 50%;
@@ -154,123 +161,60 @@
             gap: 12px;
             z-index: 5;
         }
-        .loader-dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background-color: var(--accent-primary);
-            animation: bounce 0.6s infinite alternate;
-        }
+        .loader-dot { width: 16px; height: 16px; border-radius: 50%; background-color: var(--accent-primary); animation: bounce 0.6s infinite alternate; }
         .loader-dot:nth-child(2) { animation-delay: 0.2s; }
         .loader-dot:nth-child(3) { animation-delay: 0.4s; }
-        
-        @keyframes bounce {
-            from { transform: translateY(0); }
-            to { transform: translateY(-15px); }
-        }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
 
-        /* Modal Window Styles (no changes) */
-        #modal-overlay {
-            display: none; 
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        #modal-content {
-            background-color: var(--surface1-color);
-            padding: 24px;
-            border-radius: 16px;
-            border: 1px solid #333;
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-        }
-        #modal-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
+        /* Modal */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; }
+        #modal-content { background-color: var(--surface1-color); padding: 24px; border-radius: 16px; border: 1px solid #333; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; position: relative; }
+        #modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
         #modal-close:hover { color: var(--text-primary); }
-        #modal-title {
-            font-size: 1.75rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
+        #modal-title { font-size: 1.75rem; font-weight: 600; margin-bottom: 20px; }
         .modal-section { margin-bottom: 24px; }
-        .modal-section h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--icon-color-2);
-            border-bottom: 1px solid #444;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
+        .modal-section h3 { font-size: 1.1rem; font-weight: 600; color: var(--icon-color-2); border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 12px; }
         .problem { margin-bottom: 16px; }
         .problem p { margin-bottom: 8px; font-size: 1.1rem; }
-        .problem .solution {
-            font-family: monospace;
-            background-color: var(--bg-color);
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            font-size: 0.9rem;
-            white-space: pre-wrap; 
-        }
-        .video-link {
-            display: block;
-            color: var(--text-secondary);
-            text-decoration: none;
-            margin-bottom: 8px;
-        }
+        .problem .solution { font-family: monospace; background-color: var(--bg-color); padding: 12px; border-radius: 8px; border: 1px solid #333; font-size: 0.9rem; white-space: pre-wrap; }
+        .video-link { display: block; color: var(--text-secondary); text-decoration: none; margin-bottom: 8px; }
         .video-link:hover { color: var(--accent-primary); }
-        #modal-generate-more {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            background-color: var(--icon-color-2);
-            color: var(--text-primary);
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
+        #modal-generate-more { display: block; width: 100%; padding: 12px; background-color: var(--icon-color-2); color: var(--text-primary); border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
         #modal-generate-more:hover { background-color: #4a94f7; }
 
+        /* error block style */
+        .error-block {
+            position: absolute;
+            top: 32px;
+            left: 32px;
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.18);
+            color: var(--error-color);
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 6;
+            max-width: calc(100% - 64px);
+        }
     </style>
 </head>
 <body>
-
     <main id="canvas-container">
         <div id="tree-container">
-            <div id="tree-placeholder">
-                <p></p>
-            </div>
+            <div id="tree-placeholder"></div>
         </div>
     </main>
 
     <aside id="floating-panel">
         <header>
-            <div> 
-                <div class="logo-icon"></div>
-                <h1>Concept Visualizer</h1>
-                <p class="subtitle">Enter any topic to visualize it as an interactive map</p>
+            <div class="header-left">
+                <div class="logo-icon" aria-hidden="true"></div>
+                <div class="title-wrap">
+                    <h1>Concept Visualizer</h1>
+                    <p class="subtitle">Enter any topic to visualize it as an interactive map</p>
+                </div>
             </div>
-            <button id="collapse-btn" aria-label="Collapse panel">
+
+            <button id="collapse-btn" aria-label="Collapse panel" title="Collapse panel">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
                 </svg>
@@ -280,19 +224,15 @@
         <form id="prompt-form">
             <section class="input-section">
                 <label for="problem-input">Enter a topic or idea</label>
-                <textarea 
-                    id="problem-input"
-                    name="prompt" 
-                    placeholder="e.g., 'AP Calc BC' or 'History of the Roman Empire'"
-                ></textarea>
-                <button type="submit" id="generate-btn">
+                <textarea id="problem-input" name="prompt" placeholder="e.g., 'Calculus' or 'History of the Roman Empire'" aria-label="Topic input"></textarea>
+                <button type="submit" id="generate-btn" aria-label="Generate map">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.036a3.375 3.375 0 0 0 2.456 2.455L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"></path></svg>
                     Generate Map
                 </button>
             </section>
         </form>
     </aside>
-    
+
     <div id="modal-overlay">
         <div id="modal-content">
             <button id="modal-close" title="Close">&times;</button>
@@ -312,22 +252,16 @@
             </div>
         </div>
     </div>
-    
-    <script>
-        // --- REMOVED MOCK DATABASES ---
-        
-        // --- NEW: Caching for API results ---
-        const skillCache = {};
 
-        // --- NEW: Server URL ---
+    <script>
+        // --- small caching & API url ---
+        const skillCache = {};
         const API_URL = 'http://localhost:3000/get-skills';
-        
-        // --- Global variables (unchanged) ---
+
         let currentModalSkill = null;
-        let myChart = null; 
+        let myChart = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // All DOM element references (unchanged)
             const panel = document.getElementById('floating-panel');
             const collapseBtn = document.getElementById('collapse-btn');
             const promptForm = document.getElementById('prompt-form');
@@ -337,18 +271,17 @@
             const generateMoreBtn = document.getElementById('modal-generate-more');
             const panelHeader = panel.querySelector('header');
             const treeContainer = document.getElementById('tree-container');
-            
-            // --- Form Submit Handler (unchanged) ---
+
+            // submit handler
             promptForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const prompt = promptInput.value.trim();
                 if (prompt) {
-                    // This now triggers the API call
                     fetchAndDrawTree(prompt);
                 }
             });
 
-            // --- Panel Dragging Logic (unchanged) ---
+            // dragging panel (desktop only)
             let isDraggingPanel = false;
             let startDragX, startDragY, startPanelX, startPanelY;
             if (window.innerWidth > 768) {
@@ -385,17 +318,12 @@
                 document.removeEventListener('mouseup', onPanelDragEnd);
             }
 
-            // --- Panel Collapse (unchanged) ---
-            collapseBtn.addEventListener('click', () => {
-                panel.classList.toggle('is-collapsed');
-            });
-            
-            // --- Modal Listeners (unchanged) ---
+            // Collapse toggle
+            collapseBtn.addEventListener('click', () => panel.classList.toggle('is-collapsed'));
+
+            // modal listeners
             modalClose.addEventListener('click', closeModal);
-            modalOverlay.addEventListener('click', (e) => {
-                if (e.target === modalOverlay) closeModal();
-            });
-            // This button now triggers a new API call for the selected skill
+            modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
             generateMoreBtn.addEventListener('click', () => {
                 if (currentModalSkill) {
                     closeModal();
@@ -403,102 +331,124 @@
                     promptInput.value = currentModalSkill;
                 }
             });
+
+            // Background panning (only start if click hits container background or canvas)
             let isPanningBg = false;
             let startBgX = 0, startBgY = 0;
+            let startChartX = 0, startChartY = 0; // <-- Track chart's pan
             let startMouseX = 0, startMouseY = 0;
 
             treeContainer.addEventListener('mousedown', (e) => {
-                // Only pan with left click
                 if (e.button !== 0) return;
-                
-                // We only want to pan if we click the background,
-                // not an ECharts node/label (which is a canvas).
-                // We check if the target is the container itself or its direct canvas child.
+
                 const canvas = treeContainer.querySelector('canvas');
-                if (e.target !== treeContainer && e.target !== canvas) {
-                    return; 
+                // allow panning if clicked either on the container background or directly on the canvas element
+                // Also allow panning on the loader
+                const chartWrapper = treeContainer.firstElementChild;
+                if (e.target !== treeContainer && e.target !== canvas && e.target !== chartWrapper && !e.target.closest('.loader-container')) {
+                    return;
                 }
 
                 isPanningBg = true;
                 startMouseX = e.clientX;
                 startMouseY = e.clientY;
 
-                // Get current background position
+                // Get background start pos
                 const bgPos = window.getComputedStyle(treeContainer).backgroundPosition.split(' ');
-                startBgX = parseFloat(bgPos[0]);
-                startBgY = parseFloat(bgPos[1]);
-                
-                treeContainer.style.cursor = 'grabbing'; // Visual feedback
+                startBgX = parseFloat(bgPos[0]) || 0;
+                startBgY = parseFloat(bgPos[1]) || 0;
 
+                // Get chart wrapper's current transform
+                if (chartWrapper && chartWrapper.style.transform) {
+                    const transform = window.getComputedStyle(chartWrapper).transform;
+                    if (transform && transform !== 'none') {
+                        // Use DOMMatrix to parse translate values (robust)
+                        const matrix = new DOMMatrix(transform);
+                        startChartX = matrix.m41; // translateX
+                        startChartY = matrix.m42; // translateY
+                    } else {
+                        startChartX = 0;
+                        startChartY = 0;
+                    }
+                } else {
+                    startChartX = 0;
+                    startChartY = 0;
+                }
+
+                treeContainer.style.cursor = 'grabbing';
                 document.addEventListener('mousemove', onBgDrag);
                 document.addEventListener('mouseup', onBgDragEnd, { once: true });
             });
 
             function onBgDrag(e) {
                 if (!isPanningBg) return;
-                // prevent text selection while dragging
-                e.preventDefault(); 
-                
+                e.preventDefault();
                 const deltaX = e.clientX - startMouseX;
                 const deltaY = e.clientY - startMouseY;
 
+                // Calculate new absolute positions
                 const newBgX = startBgX + deltaX;
                 const newBgY = startBgY + deltaY;
+                const newChartX = startChartX + deltaX;
+                const newChartY = startChartY + deltaY;
 
+                // Apply to background
                 treeContainer.style.backgroundPosition = `${newBgX}px ${newBgY}px`;
+
+                // Apply to chart wrapper (or loader)
+                const chartWrapper = treeContainer.firstElementChild;
+                if (chartWrapper && (chartWrapper.tagName === 'DIV' || chartWrapper.tagName === 'CANVAS')) {
+                    chartWrapper.style.transform = `translate(${newChartX}px, ${newChartY}px)`;
+                }
             }
 
             function onBgDragEnd() {
                 isPanningBg = false;
-                treeContainer.style.cursor = 'default'; // Reset cursor
+                treeContainer.style.cursor = 'default';
                 document.removeEventListener('mousemove', onBgDrag);
             }
         });
 
-        // --- NEW: Tree Generation Logic (Using fetch) ---
+        // Fetch + draw tree (with cache)
         async function fetchAndDrawTree(prompt) {
             const treeContainer = document.getElementById('tree-container');
-            // Show loader
+            // show loader
             treeContainer.innerHTML = `
                 <div class="loader-container">
-                    <div class="loader-dot"></div>
-                    <div class="loader-dot"></div>
-                    <div class="loader-dot"></div>
+                    <div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div>
                 </div>
             `;
-            
-            // 1. Check cache first
+            // Reset background position for the loader, in case it was panned
+            treeContainer.style.backgroundPosition = '0 0';
+
             if (skillCache[prompt]) {
-                console.log(`Loading "${prompt}" from cache...`);
                 drawEChartTree(skillCache[prompt]);
                 return;
             }
 
-            // 2. If not in cache, fetch from server
-            console.log(`Fetching "${prompt}" from API...`);
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: prompt }),
                 });
 
-                if (!response.ok) {
-                    // Handle HTTP errors (like 500)
-                    const errorData = await response.json();
-                    throw new Error(errorData.details || `Server error: ${response.status}`);
+                // If server returns non-JSON, guard against parsing errors
+                const text = await response.text();
+                let skillData;
+                try { skillData = JSON.parse(text); } catch (err) {
+                    if (!response.ok) throw new Error(`Server returned an unexpected response (${response.status})`);
+                    else throw err;
                 }
 
-                const skillData = await response.json();
+                if (!response.ok) {
+                    const details = skillData && skillData.details ? skillData.details : `Status ${response.status}`;
+                    throw new Error(details);
+                }
 
-                // 3. Cache and draw
-                skillCache[prompt] = skillData; // Save to cache
+                skillCache[prompt] = skillData;
                 drawEChartTree(skillData);
-
             } catch (error) {
-                // Handle fetch errors (server down) or parsing errors
                 console.error('Failed to fetch and draw tree:', error);
                 treeContainer.innerHTML = `
                     <div id="tree-placeholder" style="color: var(--error-color);">
@@ -512,19 +462,15 @@
             }
         }
 
-        // --- NEW: Modal Function (Simplified) ---
+        // Modal open/close
         function openModal(nodeData) {
-            // nodeData is the object from the ECharts chart
             currentModalSkill = nodeData.name;
             document.getElementById('modal-title').textContent = nodeData.name;
-            
             const problemsContainer = document.getElementById('practice-problems');
             const videosContainer = document.getElementById('video-tutorials');
             problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
             videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
 
-            // Check if the node itself has the data (it's the root node of the current view)
-            // OR if we have fetched it before and it's in the cache.
             const skillContent = nodeData.practiceProblems ? nodeData : skillCache[nodeData.name];
 
             if (skillContent && skillContent.practiceProblems) {
@@ -537,144 +483,134 @@
             } else {
                 problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">No practice problems found for this sub-topic. Click "Go Deeper" to fetch them.</p>';
             }
-            
+
             if (skillContent && skillContent.videoTutorials) {
-                 skillContent.videoTutorials.forEach(vid => {
+                skillContent.videoTutorials.forEach(vid => {
                     const el = document.createElement('a');
                     el.className = 'video-link';
-                    el.href = vid.url || '#'; // Use '#' as a fallback
+                    el.href = vid.url || '#';
                     el.target = '_blank';
+                    el.rel = 'noopener noreferrer';
                     el.textContent = `▶ ${vid.title}`;
                     videosContainer.appendChild(el);
                 });
             } else {
                 videosContainer.innerHTML += '<p style="color: var(--text-secondary);">No videos found.</p>';
             }
-            
+
             document.getElementById('modal-overlay').style.display = 'flex';
         }
 
-        // --- Modal Close (unchanged) ---
         function closeModal() {
             document.getElementById('modal-overlay').style.display = 'none';
             currentModalSkill = null;
         }
 
-        // --- REMOVED: buildFullTree() ---
-
-        // --- ECHARTS DRAWING FUNCTION (UPDATED) ---
-        const animationDuration = 500;  
+        // ECharts drawing — resolve CSS variables into JS values first
+        const animationDuration = 500;
         function drawEChartTree(data) {
             const treeContainer = document.getElementById('tree-container');
-            treeContainer.innerHTML = ''; // Clear loader
             
-            if (myChart) {
-                myChart.dispose();
-            }
-            myChart = echarts.init(treeContainer, null, { renderer: 'canvas' });  
+            // Reset pan position before drawing a new tree
+            treeContainer.style.backgroundPosition = '0 0';
 
-            // Check depth to auto-expand the first level
-            let treeDepth = 0;  
-            if (data.children && data.children.length > 0) {
-                treeDepth = 1; 
-            }
+            treeContainer.innerHTML = ''; // This will destroy the old transformed chart wrapper
+
+            if (myChart) { myChart.dispose(); }
+
+            myChart = echarts.init(treeContainer, null, { renderer: 'canvas' });
+
+            // Resolve theme variables that can't be used directly in canvas
+            const cs = getComputedStyle(document.documentElement);
+            const labelBg = (cs.getPropertyValue('--label-bg') || 'rgba(30,30,30,0.75)').trim();
+            const surfaceColor = (cs.getPropertyValue('--surface1-color') || '#1e1e1e').trim();
+            const textSecondary = (cs.getPropertyValue('--text-secondary') || '#a0a0a0').trim();
+            const iconColor2 = (cs.getPropertyValue('--icon-color-2') || '#3b82f6').trim();
+
+            // determine initial expand depth
+            let treeDepth = 0;
+            if (data.children && data.children.length > 0) treeDepth = 1;
 
             const chartOptions = {
                 backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'item',
-                    triggerOn: 'mousemove',
-                    backgroundColor: 'rgba(30, 30, 30, 0.9)',  
+                    triggerOn: 'none',
+                    backgroundColor: 'rgba(30, 30, 30, 0.9)',
                     borderColor: '#555',
                     borderWidth: 1,
-                    textStyle: { color: '#f0f0f0' },
+                    textStyle: { color: '#ffffff' },
                     formatter: (params) => params.data.name
                 },
                 series: [
                     {
                         type: 'tree',
                         data: [data],
-                        layout: 'radial',  
-                        roam: true,  // <-- *** THIS IS THE CHANGE *** (was 'true')
+                        layout: 'radial',
+                        roam: false, // Keep ECharts' internal roam disabled
                         expandAndCollapse: true,
-                        animationDuration: animationDuration,  
-                        initialTreeDepth: treeDepth,  
+                        animationDuration: animationDuration,
+                        initialTreeDepth: treeDepth,
                         symbol: 'circle',
-                        symbolSize: 1,
-                        label: { // Style for ALL node labels
-                                show: true,  
-                                position: 'auto',  
-                                verticalAlign: 'middle',
-                                align: 'auto',  
-                                fontSize: 14, // Reverted
-                                color: '#f0f0f0', // White text
-                                triggerEvent: true,  
-                                rotate: 0,  
-                                backgroundColor: 'rgba(30, 30, 30, 0.9)',  
-                                padding: [4, 7],  // Reverted
-                                borderRadius: 4, // Reverted
+                        symbolSize: 8,
 
-                                emphasis: { // Reverted
-                                    color: '#ffffff',
-                                    focus: 'ancestor' 
-                                }
+                        label: {
+                            show: true,
+                            position: 'auto',
+                            verticalAlign: 'middle',
+                            align: 'auto',
+                            fontSize: 14,
+                            color: '#ffffff',
+                            triggerEvent: true,
+                            rotate: 0,
+                            backgroundColor: labelBg,
+                            padding: [4, 7],
+                            borderRadius: 4
+                        },
+
+                        lineStyle: {
+                            color: '#ffffff',
+                            width: 1.5,
+                            curveness: 0.5,
+                            opacity: 0.9
+                        },
+
+                        leaves: {
+                            label: {
+                                show: true,
+                                color: '#ffffff',
+                                backgroundColor: labelBg,
+                                padding: [4, 7],
+                                borderRadius: 4
                             },
-                            
-                            lineStyle: { // Reverted line style for visibility
-                                color: '#a0a0a0',  
-                                width: 1.5,  
-                                curveness: 0.5,
-                                opacity: 0.9  
-                            },
-                            
-                            leaves: { // Specific styles ONLY for leaf nodes
-                                label: {
-                                    show: true,  
-                                    color: '#f0f0f0', 
-                                    backgroundColor: 'rgba(30, 30, 30, 0.75)',  
-                                    padding: [4, 7],  
-                                    borderRadius: 4,
-                                    emphasis: { // Reverted
-                                        color: '#ffffff',
-                                        focus: 'ancestor' 
-                                    }
-                                },
-                                itemStyle: { // Reverted
-                                    color: '#1e1e1e', 
-                                    borderColor: '#a0a0a0',
-                                    borderWidth: 1.5  
-                                }
-                            },
-                            
-                            itemStyle: { // Reverted
-                                color: '#666', 
-                                borderColor: '#3b82f6',
-                                borderWidth: 1.5,
-                                opacity: 1  
+                            itemStyle: {
+                                color: surfaceColor,
+                                borderColor: textSecondary,
+                                borderWidth: 1.5
                             }
+                        },
+
+                        itemStyle: {
+                            color: surfaceColor,
+                            borderColor: iconColor2,
+                            borderWidth: 1.5,
+                            opacity: 1
+                        }
                     }
                 ]
             };
 
             myChart.setOption(chartOptions);
 
-            // --- Click Handler ---
             myChart.on('click', (params) => {
                 if (params.componentType === 'series' && params.componentSubType === 'tree') {
                     openModal(params.data);
                 }
             });
 
-            // Make the chart responsive
-            window.addEventListener('resize', () => {
-                if (myChart) {
-                    myChart.resize();
-                }
-
-            
-            });
+            // ensure chart resizes
+            window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
         }
     </script>
-
 </body>
 </html>
