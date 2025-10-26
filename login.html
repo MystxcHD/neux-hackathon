@@ -12,14 +12,13 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #040303; /* Main BG */
-            color: #DCD5D0; /* Primary Text */
+            background-color: #040303;
+            color: #DCD5D0; 
         }
     </style>
 </head>
 <body class="antialiased">
 
-    <!-- Header -->
     <header class="absolute top-0 left-0 right-0 z-50 py-5">
         <nav class="container mx-auto max-w-7xl px-6 lg:px-8 flex justify-between items-center">
             <a href="landing.html" class="text-3xl font-bold text-[#F2F6D0]">
@@ -28,7 +27,6 @@
         </nav>
     </header>
 
-    <!-- Log In Form Section -->
     <main class="min-h-screen flex items-center justify-center pt-20">
         <div class="w-full max-w-md p-8 space-y-8 bg-[#1a1c20] border border-[#2E3138] rounded-2xl shadow-2xl">
             <div>
@@ -37,14 +35,11 @@
                 </h2>
             </div>
             
-            <!-- Error Message Display -->
             <div id="error-message" class="hidden p-3 bg-red-800/50 border border-red-700 rounded-lg text-red-100 text-sm">
-                <!-- Errors will be shown here -->
             </div>
 
             <form id="auth-form" class="space-y-6">
                 <input type="hidden" name="remember" value="true">
-                <!-- Added space-y-4 for margin -->
                 <div class="space-y-4">
                     <div>
                         <label for="email-address" class="sr-only">Email address</label>
@@ -60,16 +55,20 @@
                     </div>
                 </div>
 
-                <!-- Reduced gap here from gap-4 to gap-3 -->
                 <div class="flex flex-col gap-3 pt-2">
                     <button id="login-button" type="button"
                             class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-[#040303] bg-[#DCD5D0] hover:bg-[#a99e98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#040303] focus:ring-[#DCD5D0] transition-colors">
                         Log In
                     </button>
-                    <!-- Changed button to a link style -->
                     <button id="signup-button" type="button"
                             class="w-full text-center text-sm font-medium text-[#DCD5D0] hover:text-[#F2F6D0] hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#040303] focus:ring-[#F2F6D0] rounded-sm py-1">
                             <a href="signup.html">Create Account Instead</a>
+                    </button>
+                    <button id="google-signup" type="button"
+                            id="google-signin" type="button"
+                            class="group relative w-full flex justify-center items-center py-3 px-4 border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm font-medium rounded-md transition-colors">
+                        <img src="https://www.google.com/favicon.ico" alt="Google logo" class="mr-2 pointer-events-none" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+                        Sign in with Google
                     </button>
                 </div>
             </form>
@@ -80,40 +79,35 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInWithEmailAndPassword, 
+        import {
+            getAuth,
+            signInWithEmailAndPassword,
             createUserWithEmailAndPassword,
-            signInAnonymously,
-            signInWithCustomToken,
-            setLogLevel
+            GoogleAuthProvider,
+            signInWithPopup
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // --- Firebase Configuration ---
-        // These global variables are provided by the environment.
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // Initialize Firebase
-        let app, auth;
-        try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            setLogLevel('Debug');
-        } catch (e) {
-            console.error("Firebase initialization error:", e);
-            displayError("Could not connect to authentication service.");
-            return;
-        }
+        const firebaseConfig = {
+            apiKey: "AIzaSyAnN6RcQty1xBYyGX2xffbiO-nch3fY5X8",
+            authDomain: "neux-45866.firebaseapp.com",
+            projectId: "neux-45866",
+            storageBucket: "neux-45866.appspot.com",
+            messagingSenderId: "308796826755",
+            appId: "1:308796826755:web:08f1ed9c1584e85b1d27b6",
+            measurementId: "G-80XDWR1DLE"
+        };
 
-        // --- DOM Elements ---
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
         const emailInput = document.getElementById('email-address');
         const passwordInput = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const signupButton = document.getElementById('signup-button');
         const errorMessageDiv = document.getElementById('error-message');
 
-        // --- Helper Function ---
         function displayError(message) {
             errorMessageDiv.textContent = message;
             errorMessageDiv.classList.remove('hidden');
@@ -124,24 +118,23 @@
             errorMessageDiv.classList.add('hidden');
         }
 
-        // --- Initial Auth Check ---
-        // Sign in with the provided token or anonymously
-        (async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Anonymous sign-in error:", error);
-                displayError("Could not initialize guest session.");
-            }
-        })();
 
-        // --- Event Listeners ---
+        const googleSignInButton = document.getElementById('google-signin');
+        if (googleSignInButton) {
+            googleSignInButton.addEventListener('click', async () => {
+                console.log('Google sign-in button clicked');
+                clearError();
+                const provider = new GoogleAuthProvider();
+                try {
+                    await signInWithPopup(auth, provider);
+                    window.location.href = 'app.html';
+                } catch (error) {
+                    displayError(getFriendlyErrorMessage(error));
+                }
+            });
+        }
+
         signupButton.addEventListener('click', () => {
-            // User wants to sign up, so we redirect to the signup page
             window.location.href = 'signup.html';
         });
 
@@ -156,9 +149,7 @@
             }
 
             try {
-                // Try to sign in the user
                 await signInWithEmailAndPassword(auth, email, password);
-                // On success, redirect to the main app page
                 window.location.href = 'app.html';
             } catch (error) {
                 console.error("Log In Error:", error.code, error.message);
