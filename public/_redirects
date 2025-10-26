@@ -1,0 +1,7 @@
+# Redirects for static HTML file mapping
+/login /login.html 200
+/signup /signup.html 200
+/app /app.html 200
+
+# Fallback/SPA rule for any other path to load the index
+/* /index.html 200
