@@ -16,8 +16,9 @@
             --accent-primary-text: #101010;
             --border-color: #333;
             --dot-color: #3a3a3a;
-            --icon-color-2: #3b82f6; 
-            --label-bg: rgba(30, 30, 30, 0.75);
+            --icon-color-1: #f04a94;  
+            --icon-color-2: #3b82f6; /* Blue border */
+            --label-bg: rgba(30, 30, 30, 0.9);
             --error-color: #f87171; /* For error messages */
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -594,59 +595,63 @@
                         type: 'tree',
                         data: [data],
                         layout: 'radial',  
-                        roam: false,  // <-- *** THIS IS THE CHANGE *** (was 'true')
+                        roam: true,  // <-- *** THIS IS THE CHANGE *** (was 'true')
                         expandAndCollapse: true,
                         animationDuration: animationDuration,  
                         initialTreeDepth: treeDepth,  
                         symbol: 'circle',
-                        symbolSize: 8,
-                        label: { 
-                            show: true,  
-                            position: 'auto',  
-                            verticalAlign: 'middle',
-                            align: 'auto',  
-                            fontSize: 14, 
-                            color: 'var(--text-primary)', 
-                            triggerEvent: true,  
-                            rotate: 0,  
-                            backgroundColor: 'var(--label-bg)',  
-                            padding: [4, 7],  
-                            borderRadius: 4, 
-                            emphasis: { 
-                                color: '#ffffff',
-                                focus: 'descendant'
-                            }
-                        },
-                        lineStyle: { 
-                            color: 'var(--text-secondary)',  
-                            width: 1.5,  
-                            curveness: 0.5,
-                            opacity: 0.9  
-                        },
-                        leaves: { 
-                            label: {
+                        symbolSize: 1,
+                        label: { // Style for ALL node labels
                                 show: true,  
-                                color: 'var(--text-primary)', 
-                                backgroundColor: 'var(--label-bg)',  
-                                padding: [4, 7],  
-                                borderRadius: 4,
-                                emphasis: { 
+                                position: 'auto',  
+                                verticalAlign: 'middle',
+                                align: 'auto',  
+                                fontSize: 14, // Reverted
+                                color: '#f0f0f0', // White text
+                                triggerEvent: true,  
+                                rotate: 0,  
+                                backgroundColor: 'rgba(30, 30, 30, 0.9)',  
+                                padding: [4, 7],  // Reverted
+                                borderRadius: 4, // Reverted
+
+                                emphasis: { // Reverted
                                     color: '#ffffff',
-                                    focus: 'descendant' 
+                                    focus: 'ancestor' 
                                 }
                             },
-                            itemStyle: { 
-                                color: 'var(--surface1-color)', 
-                                borderColor: 'var(--text-secondary)',
-                                borderWidth: 1.5  
+                            
+                            lineStyle: { // Reverted line style for visibility
+                                color: '#a0a0a0',  
+                                width: 1.5,  
+                                curveness: 0.5,
+                                opacity: 0.9  
+                            },
+                            
+                            leaves: { // Specific styles ONLY for leaf nodes
+                                label: {
+                                    show: true,  
+                                    color: '#f0f0f0', 
+                                    backgroundColor: 'rgba(30, 30, 30, 0.75)',  
+                                    padding: [4, 7],  
+                                    borderRadius: 4,
+                                    emphasis: { // Reverted
+                                        color: '#ffffff',
+                                        focus: 'ancestor' 
+                                    }
+                                },
+                                itemStyle: { // Reverted
+                                    color: '#1e1e1e', 
+                                    borderColor: '#a0a0a0',
+                                    borderWidth: 1.5  
+                                }
+                            },
+                            
+                            itemStyle: { // Reverted
+                                color: '#666', 
+                                borderColor: '#3b82f6',
+                                borderWidth: 1.5,
+                                opacity: 1  
                             }
-                        },
-                        itemStyle: { 
-                            color: 'var(--surface1-color)',
-                            borderColor: 'var(--icon-color-2)',
-                            borderWidth: 1.5,
-                            opacity: 1  
-                        }
                     }
                 ]
             };
