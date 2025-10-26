@@ -6,9 +6,6 @@
     <title>Concept Visualizer</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-
     <style>
         :root {
             --bg-color: #101010;
@@ -23,30 +20,6 @@
             --label-bg: rgba(30, 30, 30, 0.75); /* Default label background */
             --error-color: #f87171;
         }
-
-        /* --- !! NEW: Logout Button Style !! --- */
-        #logout-button {
-            position: fixed; 
-            top: 24px; 
-            left: 24px; 
-            z-index: 1001; /* Higher than floating-panel */
-            background-color: var(--surface1-color); 
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color); 
-            padding: 8px 16px; 
-            border-radius: 8px; 
-            cursor: pointer;
-            font-weight: 600;
-            font-family: inherit;
-            font-size: 0.9rem;
-            transition: all 0.2s ease;
-        }
-        #logout-button:hover {
-            background-color: var(--border-color);
-            color: var(--text-primary);
-        }
-        /* --- End Logout Button Style --- */
-
 
         /* --- History Section Styles --- */
         #history-section {
@@ -186,14 +159,6 @@
         #floating-panel.is-collapsed #collapse-btn svg { transform: rotate(180deg); }
 
         @media (max-width: 768px) {
-            /* Adjust logout button for mobile */
-            #logout-button {
-                top: 16px;
-                left: 16px;
-                padding: 6px 12px;
-                font-size: 0.85rem;
-            }
-            
             #floating-panel {
                 top: auto; left: 0; bottom: 0; width: 100%; max-height: 50vh;
                 border-radius: 16px 16px 0 0; border: none; border-top: 1px solid var(--border-color);
@@ -239,9 +204,6 @@
     </style>
 </head>
 <body>
-    
-    <button id="logout-button">Logout</button>
-
     <main id="canvas-container">
         <div id="tree-container">
             <div id="tree-placeholder"></div>
@@ -289,33 +251,17 @@
                 <h3>Practice Problems</h3>
             </div>
             <div class="modal-section" id="video-tutorials">
-                <h3>Video Tutorials</h3>
+                <h3>Resources</h3>
             </div>
             </div>
     </div>
 
     <script>
-        // --- !! NEW: Firebase Config & Init !! ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyAnN6RcQty1xBYyGX2xffbiO-nch3fY5X8",
-            authDomain: "neux-45866.firebaseapp.com",
-            projectId: "neux-45866",
-            storageBucket: "neux-45866.appspot.com",
-            messagingSenderId: "308796826755",
-            appId: "1:308796826755:web:08f1ed9c1584e85b1d27b6",
-            measurementId: "G-80XDWR1DLE"
-        };
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        // --- End Firebase Init ---
-
-
         // --- Caching, API url, and Global State ---
         let myChart = null;
         let isExpanding = false;
         const skillCache = {};
-        const API_URL = 'https://neux-v3c5.onrender.com/get-skills'; // <-- Relative path
+        const API_URL = 'http://localhost:3000/get-skills';
         let currentModalSkill = null;
         let currentBgPosX = 0;
         let currentBgPosY = 0;
@@ -328,7 +274,7 @@
         const DARK_TEXT_COLORS = []; 
 
         // --- History Section ---
-        let USER_HISTORY_KEY = null;
+        const HISTORY_KEY = 'conceptVisualizerHistory';
         const MAX_HISTORY_ITEMS = 15;
 
         // --- !! ADDED COLORING FUNCTION !! ---
@@ -377,14 +323,12 @@
 
         // --- History Functions (Unchanged) ---
         function getHistory() {
-            if (!USER_HISTORY_KEY) return []; // Don't load if key isn't set
-            const history = localStorage.getItem(USER_HISTORY_KEY);
+             const history = localStorage.getItem(HISTORY_KEY);
             return history ? JSON.parse(history) : [];
-        }
+         }
         function saveHistory(history) {
-            if (!USER_HISTORY_KEY) return; // Don't save if key isn't set
-            localStorage.setItem(USER_HISTORY_KEY, JSON.stringify(history));
-        }
+             localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+         }
         function addTopicToHistory(topic) {
              let history = getHistory();
              const existingIndex = history.indexOf(topic);
@@ -431,41 +375,6 @@
             const treeContainer = document.getElementById('tree-container');
             const historyToggle = document.getElementById('history-toggle');
             const historyContent = document.getElementById('history-content');
-            
-            // --- !! NEW: Auth State Check to set User-Specific History !! ---
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    // --- User is signed in ---
-                    console.log('User signed in:', user.uid);
-                    
-                    // Set the user-specific key for localStorage
-                    USER_HISTORY_KEY = `conceptVisualizerHistory_${user.uid}`;
-                    
-                    // NOW we load the history for this specific user
-                    loadHistory(); 
-
-                    // Setup logout button logic
-                    const logoutButton = document.getElementById('logout-button');
-                    if (logoutButton) {
-                        logoutButton.addEventListener('click', () => {
-                            auth.signOut().then(() => {
-                                console.log('User logged out');
-                                window.location.href = '/'; // Redirect to landing page
-                            }).catch((error) => {
-                                console.error('Logout Error:', error);
-                            });
-                        });
-                    }
-
-                } else {
-                    // --- User is signed out ---
-                    console.log('No user signed in. Redirecting to login.');
-                    // If on the app page without a user, send to login
-                    window.location.href = '/login';
-                }
-            });
-            // --- End Auth State Check ---
-
 
             // submit handler
             promptForm.addEventListener('submit', (e) => {
@@ -482,7 +391,7 @@
              let startDragX, startDragY, startPanelX, startPanelY;
              if (window.innerWidth > 768) {
                  panelHeader.addEventListener('mousedown', (e) => {
-                     if (e.button !== 0 || e.target.closest('button, input, textarea, a, #collapse-btn, #logout-button')) return;
+                     if (e.button !== 0 || e.target.closest('button, input, textarea, a, #collapse-btn')) return;
                      isDraggingPanel = true;
                      panel.style.userSelect = 'none';
                      startDragX = e.clientX; startDragY = e.clientY;
@@ -532,9 +441,6 @@
             treeContainer.addEventListener('mousedown', (e) => {
                 // Only pan with left click
                 if (e.button !== 0) return;
-                
-                // !! Don't pan if clicking the logout button !!
-                if (e.target.closest('#logout-button')) return;
 
                 const canvas = treeContainer.querySelector('canvas');
                 // Allow panning if clicked on container, canvas, or loader
@@ -625,7 +531,7 @@
                  });
              }, { passive: false });
 
-            
+            loadHistory(); // Load and render history tags on page load
         });
 
         // Syncs the background grid
@@ -663,175 +569,145 @@
          }
 
         // --- UPDATED 'expandNode' FUNCTION (With Coloring) ---
-        async function expandNode(prompt, shouldOpenModal = false, isContentOnlyFetch = false) {
-    if (isExpanding) {
-        console.log("Already expanding, please wait...");
-        return;
-    }
-    isExpanding = true;
-    let currentData;
-    let targetNode;
-    let originalName;
-    let parentColor;
+        async function expandNode(prompt) {
+            if (isExpanding) {
+                console.log("Already expanding, please wait...");
+                return;
+            }
+            isExpanding = true;
+            let currentData;
+            let targetNode;
+            let originalName;
+            let parentColor; // Store parent color for applying to new children
 
-    try {
-        // 1. Find the node and its ancestors
-        currentData = myChart.getOption().series[0].data[0];
-        const findResult = findNodeAndAncestors(currentData, prompt);
+            try {
+                // 1. Find the node and its ancestors
+                currentData = myChart.getOption().series[0].data[0];
+                const findResult = findNodeAndAncestors(currentData, prompt);
 
-        if (!findResult) {
-            throw new Error(`Could not find node "${prompt}" in the current tree.`);
-        }
-        
-        const { node, path: nodePath } = findResult;
-        targetNode = node;
-        
-        // --- Determine the color to apply to new children (logic unchanged) ---
-        parentColor = (targetNode.label && targetNode.label.backgroundColor)
-                        ? targetNode.label.backgroundColor
-                        : 'var(--label-bg)'; 
-                        
-        if (parentColor === 'var(--label-bg)') {
-             if (nodePath.length > 1) {
-                 const parentNode = nodePath[nodePath.length - 2];
-                 if (parentNode && parentNode.children) {
-                     const siblingIndex = parentNode.children.findIndex(child => child.name === targetNode.name);
-                     if (siblingIndex !== -1) {
-                        parentColor = NODE_PALETTE[siblingIndex % NODE_PALETTE.length];
+                if (!findResult) {
+                    throw new Error(`Could not find node "${prompt}" in the current tree.`);
+                }
+                
+                const { node, path: nodePath } = findResult;
+                targetNode = node; // Make targetNode accessible
+                
+                // --- Determine the color to apply to new children ---
+                // Get the background color from the target node itself
+                parentColor = (targetNode.label && targetNode.label.backgroundColor)
+                                ? targetNode.label.backgroundColor
+                                : 'var(--label-bg)'; // Default if root or somehow missing
+                                
+                // --- If the parent is the root (default color), pick the first palette color ---
+                if (parentColor === 'var(--label-bg)') {
+                     // Find the index of this node among its siblings to pick a palette color
+                     // This requires finding the actual parent node in the data structure
+                     if (nodePath.length > 1) {
+                         const parentNode = nodePath[nodePath.length - 2];
+                         if (parentNode && parentNode.children) {
+                             const siblingIndex = parentNode.children.findIndex(child => child.name === targetNode.name);
+                             if (siblingIndex !== -1) {
+                                parentColor = NODE_PALETTE[siblingIndex % NODE_PALETTE.length];
+                             } else {
+                                 parentColor = NODE_PALETTE[0]; // Fallback
+                             }
+                         } else {
+                            parentColor = NODE_PALETTE[0]; // Fallback if parent has no children array (shouldn't happen)
+                         }
                      } else {
-                         parentColor = NODE_PALETTE[0];
+                        // This case should technically not happen if we avoid coloring the root
+                        parentColor = NODE_PALETTE[0]; 
                      }
-                 } else {
-                    parentColor = NODE_PALETTE[0];
                  }
-             } else {
-                parentColor = NODE_PALETTE[0]; 
-             }
-         }
 
 
-        // --- Check if we need to fetch (Refined check) ---
-        let isStub = false;
-        let isContentMissing = !targetNode.practiceProblems; 
-        
-        if (targetNode.children && targetNode.children.length > 0) {
-            if (targetNode.children[0].practiceProblems === undefined) {
-                isStub = true;
-            }
-        } else if (!targetNode.children) {
-            isStub = true;
-        }
+                // --- Check if we need to fetch ---
+                let isStub = false;
+                if (targetNode.children && targetNode.children.length > 0) {
+                    if (targetNode.children[0].practiceProblems === undefined) {
+                        isStub = true;
+                    }
+                } else if (!targetNode.children) {
+                    isStub = true;
+                }
 
-        // If data is already fully loaded:
-        if (!isContentMissing && !isStub) {
-            console.log(`Node already has full data. Content-Only: ${isContentOnlyFetch}`);
+                // If children exist AND they are NOT stubs, just un-collapse
+                if (targetNode.children && targetNode.children.length > 0 && !isStub) {
+                    console.log("Node already has full children, just un-collapsing.");
+                    nodePath.forEach(ancestorNode => { ancestorNode.collapsed = false; });
+                    myChart.setOption({ series: [{ data: [currentData] }] });
+                    closeModal();
+                    isExpanding = false; return; // Exit early
+                }
+                // --- End Check ---
 
-            // Only modify the tree structure if this was NOT a content-only fetch.
-            if (!isContentOnlyFetch) {
-                console.log("Un-collapsing node structure.");
+                // Must fetch. Show loading state.
+                console.log("Node is stub or has no children. Fetching data...");
+                originalName = targetNode.name; // Store original name
+                targetNode.name = `${originalName} (Loading...)`; // Change label
+                // Keep existing background color, make text grey
+                targetNode.label = { ...(targetNode.label || {}), color: '#a0a0a0' };
+                myChart.setOption({ series: [{ data: [currentData] }] }); // Apply loading state
+
+                const ancestorsForContext = nodePath.map(n => n.name).slice(0, -1);
+
+                // 2. Get data
+                console.log(`Fetching new data for expansion: ${prompt}, Ancestors: ${ancestorsForContext.join(' -> ')}`);
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, ancestors: ancestorsForContext }),
+                });
+
+                const text = await response.text();
+                let newData;
+                try { 
+                    newData = JSON.parse(text); 
+                } catch (err) { 
+                    if (!response.ok) throw new Error(`Server error (${response.status})`);
+                    else throw err; 
+                }
+                if (!response.ok) { 
+                     const details = newData?.details || `Status ${response.status}`;
+                     throw new Error(details);
+                 }
+                
+                // --- !! COLORIZE NEW DATA !! ---
+                const dataToColorize = JSON.parse(JSON.stringify(newData)); 
+                // Pass the determined parentColor to color the NEW children
+                const colorizedNewData = colorizeTreeData(dataToColorize, parentColor);
+                
+                skillCache[prompt] = colorizedNewData; // Cache the colorized full data
+
+                // 3. Merge *colorized* new data into the target node
+                Object.assign(targetNode, colorizedNewData);
+                
+                // --- Restore original name and style ---
+                targetNode.name = originalName;
+                 // Ensure background color is kept, restore text color to white
+                targetNode.label = { ...(targetNode.label || {}), color: '#ffffff' }; 
+
+                // 4. Ensure path is expanded
                 nodePath.forEach(ancestorNode => { ancestorNode.collapsed = false; });
+
+                // 5. Update chart
                 myChart.setOption({ series: [{ data: [currentData] }] });
+                
+                closeModal();
+
+            } catch (error) {
+                console.error('Failed to expand node:', error);
+                alert(`Error expanding node: ${error.message}`);
+                // Restore name on failure
+                if (targetNode && originalName) {
+                    targetNode.name = originalName;
+                    targetNode.label = { ...(targetNode.label || {}), color: 'var(--error-color)' }; // Error color
+                    myChart.setOption({ series: [{ data: [currentData] }] });
+                }
+            } finally {
+                isExpanding = false;
             }
-
-            if (shouldOpenModal) {
-                 openModal(targetNode);
-            }
-            isExpanding = false; return;
         }
-        
-        // If content is present, but structure is missing/stubbed, and we are only here for content
-        if (isContentOnlyFetch && !isContentMissing) {
-            if (shouldOpenModal) {
-                 openModal(targetNode);
-            }
-            isExpanding = false; return;
-        }
-
-
-        // Must fetch. Show loading state.
-        console.log("Node is missing data. Fetching full data...");
-        originalName = targetNode.name;
-        targetNode.name = `${originalName} (Loading...)`;
-        targetNode.label = { ...(targetNode.label || {}), color: '#a0a0a0' };
-        myChart.setOption({ series: [{ data: [currentData] }] }); 
-
-        const ancestorsForContext = nodePath.map(n => n.name).slice(0, -1);
-
-        // 2. Get data (network call)
-        console.log(`Fetching new data for expansion: ${prompt}, Ancestors: ${ancestorsForContext.join(' -> ')}`);
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: prompt, ancestors: ancestorsForContext }),
-        });
-        
-        const text = await response.text();
-        let newData;
-        try { 
-            newData = JSON.parse(text); 
-        } catch (err) { 
-            if (!response.ok) throw new Error(`Server error (${response.status})`);
-            else throw err; 
-        }
-        if (!response.ok) { 
-             const details = newData?.details || `Status ${response.status}`;
-             throw new Error(details);
-         }
-        
-        // --- 3. CRITICAL FIX: Selective Merge ---
-        
-        if (isContentOnlyFetch) {
-            // LOGICAL FIX: Only copy content fields and explicitly ignore 'children'.
-            
-            // 1. Copy content properties
-            targetNode.practiceProblems = newData.practiceProblems || [];
-            targetNode.videoTutorials = newData.videoTutorials || [];
-
-            // 2. Ensure children are NOT copied by doing nothing, preserving the existing structure.
-            //    If children were already present, they remain. If not, they remain undefined.
-            
-        } else {
-            // Structure/Full Fetch: Overwrite everything (including children)
-            const dataToColorize = JSON.parse(JSON.stringify(newData)); 
-            
-            // Apply color to the NEW children
-            const colorizedNewData = colorizeTreeData(dataToColorize, parentColor);
-            
-            // Copy all properties, including the new 'children' array
-            Object.assign(targetNode, colorizedNewData); 
-        }
-        
-        skillCache[prompt] = targetNode; 
-
-        // --- Restore original name and style ---
-        targetNode.name = originalName;
-        targetNode.label = { ...(targetNode.label || {}), color: '#ffffff' }; 
-
-        // 4. Update Tree Structure **ONLY IF NOT CONTENT-ONLY**
-        if (!isContentOnlyFetch) {
-            nodePath.forEach(ancestorNode => { ancestorNode.collapsed = false; });
-        }
-
-        // 5. Update chart
-        myChart.setOption({ series: [{ data: [currentData] }] });
-        
-        // Open the modal if requested
-        if (shouldOpenModal) {
-            openModal(targetNode);
-        }
-
-    } catch (error) {
-        console.error('Failed to expand node:', error);
-        alert(`Error expanding node: ${error.message}`);
-        if (targetNode && originalName) {
-            targetNode.name = originalName;
-            targetNode.label = { ...(targetNode.label || {}), color: 'var(--error-color)' };
-            myChart.setOption({ series: [{ data: [currentData] }] });
-        }
-    } finally {
-        isExpanding = false;
-    }
-}
 
         // --- UPDATED 'fetchAndDrawTree' FUNCTION (With Coloring) ---
         async function fetchAndDrawTree(prompt) {
@@ -882,36 +758,34 @@
 
         // Modal open/close
         function openModal(nodeData) {
-            currentModalSkill = nodeData.name;
-            document.getElementById('modal-title').textContent = nodeData.name;
-            const problemsContainer = document.getElementById('practice-problems');
-            const videosContainer = document.getElementById('video-tutorials');
-            problemsContainer.innerHTML = '<h3>Overview</h3>';
-            videosContainer.innerHTML = '<h3>Resources</h3>';
-            
-            if (nodeData.practiceProblems && nodeData.practiceProblems.length > 0) {
-                nodeData.practiceProblems.forEach(prob => {
-                    const el = document.createElement('div'); el.className = 'problem';
-                    el.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
-                    problemsContainer.appendChild(el);
-                });
-            } else {
-                // --- FIX 1: Updated instruction for missing content ---
-                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">Right-click this node on the graph to generate its content.</p>';
-            }
-            if (nodeData.videoTutorials && nodeData.videoTutorials.length > 0) {
-                nodeData.videoTutorials.forEach(vid => {
-                    const el = document.createElement('a'); el.className = 'video-link';
-                    el.href = vid.url || '#'; el.target = '_blank'; el.rel = 'noopener noreferrer';
-                    el.textContent = `▶ ${vid.title}`;
-                    videosContainer.appendChild(el);
-                });
-            } else {
-                // --- FIX 2: Updated instruction for missing videos ---
-                videosContainer.innerHTML += '<p style="color: var(--text-secondary);">Right-click the node to generate videos.</p>';
-            }
-            document.getElementById('modal-overlay').style.display = 'flex';
-        }
+             currentModalSkill = nodeData.name;
+             document.getElementById('modal-title').textContent = nodeData.name;
+             const problemsContainer = document.getElementById('practice-problems');
+             const videosContainer = document.getElementById('video-tutorials');
+             problemsContainer.innerHTML = '<h3>Overview</h3>';
+             videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
+             
+             if (nodeData.practiceProblems && nodeData.practiceProblems.length > 0) {
+                 nodeData.practiceProblems.forEach(prob => {
+                     const el = document.createElement('div'); el.className = 'problem';
+                     el.innerHTML = `<p>${prob.q}</p><div class="solution">${prob.s}</div>`;
+                     problemsContainer.appendChild(el);
+                 });
+             } else {
+                 problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">Left-click this node on the graph to generate its content.</p>';
+             }
+             if (nodeData.videoTutorials && nodeData.videoTutorials.length > 0) {
+                 nodeData.videoTutorials.forEach(vid => {
+                     const el = document.createElement('a'); el.className = 'video-link';
+                     el.href = vid.url || '#'; el.target = '_blank'; el.rel = 'noopener noreferrer';
+                     el.textContent = `▶ ${vid.title}`;
+                     videosContainer.appendChild(el);
+                 });
+             } else {
+                 videosContainer.innerHTML += '<p style="color: var(--text-secondary);">No videos found.</p>';
+             }
+             document.getElementById('modal-overlay').style.display = 'flex';
+         }
         function closeModal() {
              document.getElementById('modal-overlay').style.display = 'none';
              currentModalSkill = null;
@@ -937,27 +811,10 @@
 
             const chartOptions = {
                 backgroundColor: 'transparent',
-                tooltip: { 
-                    trigger: 'item', // Trigger when hovering over a graph item (node)
-            triggerOn: 'mousemove', // Only show on mouse move (hover)
-            backgroundColor: 'rgba(30, 30, 30, 0.95)', // Dark background
-            borderColor: '#555',
-            borderWidth: 1,
-            padding: [2, 8],
-            textStyle: {
-                color: '#ffffff',
-                fontSize: 14,
-                fontFamily: 'Inter, sans-serif'
-            },
-            formatter: function (params) {
-                // Display the name of the node
-                return `<span style="font-weight: 600;">${params.name}</span>`;
-            }
-                },
+                tooltip: { /* ... (unchanged) ... */ },
                 series: [
                     {
-                        type: 'tree', data: [data], layout: 'radial', roam: 'scale',
-                        boundingCoords: [-100000, -100000, 100000, 100000],
+                        type: 'tree', data: [data], layout: 'radial', roam: true,
                         scaleLimit: { min: 0.3, max: 3.0 },
                         expandAndCollapse: false, animationDuration: animationDuration,
                         initialTreeDepth: treeDepth,
@@ -988,61 +845,33 @@
 
             // --- Click Handler (Unchanged) ---
             myChart.on('click', (params) => {
-        if (!params.data) return;
-        params.event.event.preventDefault(); 
-        params.event.event.stopPropagation();
-        
-        const currentData = myChart.getOption().series[0].data[0];
-        const findResult = findNodeAndAncestors(currentData, params.data.name);
-        if (!findResult) return;
-        
-        const { node } = findResult;
-        
-        // Check for Collapse/Context Menu keys (Ctrl/Meta) - still useful for forcing collapse
-        const isCollapseKey = params.event.event.ctrlKey || params.event.event.metaKey;
+                 if (!params.data) return;
+                 params.event.event.preventDefault(); params.event.event.stopPropagation();
+                 const currentData = myChart.getOption().series[0].data[0];
+                 const findResult = findNodeAndAncestors(currentData, params.data.name);
+                 if (!findResult) return;
+                 const { node } = findResult;
+                 const isCollapseKey = params.event.event.ctrlKey || params.event.event.metaKey;
+                 if (isCollapseKey) {
+                     // Collapse logic...
+                     if (node.children && node.children.length > 0) {
+                         node.collapsed = true;
+                         myChart.setOption({ series: [{ data: [currentData] }] });
+                     }
+                 } else {
+                     // Expand logic...
+                     expandNode(node.name);
+                 }
+            });
 
-        // Determine if the node has children and is not currently collapsed
-        const isExpanded = node.children && node.children.length > 0 && !node.collapsed;
-
-        if (isExpanded || isCollapseKey) {
-            // Logic for Collapsing (Left-click on an open node, or Ctrl/Meta+Click)
-            console.log(`Collapsing node: ${node.name}`);
-            node.collapsed = true;
-            myChart.setOption({ series: [{ data: [currentData] }] });
-            return; 
-        }
-
-        // Logic for Expanding (Left-click on a collapsed or new node)
-        console.log(`Expanding/Fetching node structure: ${node.name}`);
-        // Call expandNode without the 'shouldOpenModal' flag
-        expandNode(node.name, false); 
-    });
-
-    // --- UPDATED Right-Click Handler (Content Generation/Display Only) ---
-    myChart.on('contextmenu', (params) => {
-        params.event.event.preventDefault(); // Prevent default browser context menu
-        if (params.componentType === 'series' && params.componentSubType === 'tree' && params.data) {
-            
-            const currentData = myChart.getOption().series[0].data[0];
-            const findResult = findNodeAndAncestors(currentData, params.data.name);
-            if (!findResult) return;
-            const { node } = findResult;
-            
-            // Check if content (practiceProblems) is missing.
-            const isContentMissing = !node.practiceProblems; 
-            
-            if (isContentMissing) {
-                console.log(`Right-click: Triggering content fetch for modal for ${node.name}.`);
-                // Use expandNode to fetch the full content, and pass the flag to open the modal afterward.
-                // NOTE: expandNode will handle the re-render when the data comes back.
-                expandNode(node.name, true); 
-            } else {
-                // Content is already loaded, just open the modal.
-                openModal(node);
-            }
-        }
-    });
-        window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
+            // --- Context Menu Handler (Unchanged) ---
+             myChart.on('contextmenu', (params) => {
+                 params.event.event.preventDefault();
+                 if (params.componentType === 'series' && params.componentSubType === 'tree' && params.data) {
+                     openModal(params.data);
+                 }
+             });
+            window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
         }
         
     </script>
