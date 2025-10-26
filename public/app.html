@@ -20,7 +20,7 @@
             --border-color: #333;
             --dot-color: #3a3a3a;
             --icon-color-2: #3b82f6;
-            --label-bg: rgba(30, 30, 30, 0.75); /* Default label background */
+            --label-bg: rgba(30, 30, 30, 0.75);
             --error-color: #f87171;
         }
 
@@ -29,7 +29,7 @@
             position: fixed; 
             top: 24px; 
             left: 24px; 
-            z-index: 1001; /* Higher than floating-panel */
+            z-index: 1001; 
             background-color: var(--surface1-color); 
             color: var(--text-secondary);
             border: 1px solid var(--border-color); 
@@ -47,7 +47,6 @@
         }
         /* --- End Logout Button Style --- */
 
-
         /* --- History Section Styles --- */
         #history-section {
             margin-bottom: 20px;
@@ -57,9 +56,9 @@
             font-weight: 600;
             font-size: 0.9rem;
             margin-bottom: 12px;
-            cursor: pointer; /* Indicate it's clickable */
-            user-select: none; /* Prevent text selection */
-            position: relative; /* For positioning the triangle */
+            cursor: pointer;
+            user-select: none;
+            position: relative;
         }
         #history-toggle::after {
             content: '▶';
@@ -74,25 +73,25 @@
             transform: rotate(90deg);
         }
         #history-content {
-            display: none; /* Collapsed by default */
-            flex-wrap: wrap; /* Allow tags to wrap */
-            gap: 8px; /* Spacing between tags */
-            max-height: 110px; /* Limit height to prevent taking too much space */
-            overflow-y: auto; /* Add scrollbar if there are many tags */
+            display: none;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 110px;
+            overflow-y: auto;
         }
         #history-content.is-open {
-            display: flex; /* Show tags using flexbox */
+            display: flex;
         }
         .history-tag {
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             color: var(--text-secondary);
             padding: 6px 12px;
-            border-radius: 20px; /* Pill shape */
+            border-radius: 20px;
             font-size: 0.85rem;
             cursor: pointer;
-            transition: all 0.2s; /* Smooth hover effect */
-            white-space: nowrap; /* Prevent tags from breaking lines */
+            transition: all 0.2s;
+            white-space: nowrap;
         }
         .history-tag:hover {
             background-color: var(--border-color);
@@ -315,7 +314,8 @@
         let myChart = null;
         let isExpanding = false;
         const skillCache = {};
-        const API_URL = 'https://neux-v3c5.onrender.com/get-skills'; // <-- Relative path
+        // CRITICAL FIX: The API URL must be the fully qualified Render path
+        const API_URL = 'https://neux-v3c5.onrender.com/get-skills';
         let currentModalSkill = null;
         let currentBgPosX = 0;
         let currentBgPosY = 0;
@@ -432,7 +432,7 @@
             const historyToggle = document.getElementById('history-toggle');
             const historyContent = document.getElementById('history-content');
             
-            // --- !! NEW: Auth State Check to set User-Specific History !! ---
+            // --- AUTHENTICATION & LOGOUT LOGIC ---
             auth.onAuthStateChanged(user => {
                 if (user) {
                     // --- User is signed in ---
@@ -612,7 +612,7 @@
             }
             // --- End Background Panning Logic ---
 
-            // Global wheel listener
+            // Global wheel listener (Enabled zoom via roam: 'scale' in chartOptions)
              window.addEventListener('wheel', (e) => {
                  if (e.target.closest('#floating-panel') || e.target.closest('#modal-content')) { return; }
                  if (!myChart) return;
@@ -662,177 +662,169 @@
              return null;
          }
 
-        // --- UPDATED 'expandNode' FUNCTION (With Coloring) ---
+        // --- EXPAND NODE FUNCTION (With Logic to Separate Left/Right Click Behavior) ---
         async function expandNode(prompt, shouldOpenModal = false, isContentOnlyFetch = false) {
-    if (isExpanding) {
-        console.log("Already expanding, please wait...");
-        return;
-    }
-    isExpanding = true;
-    let currentData;
-    let targetNode;
-    let originalName;
-    let parentColor;
+            if (isExpanding) {
+                console.log("Already expanding, please wait...");
+                return;
+            }
+            isExpanding = true;
+            let currentData;
+            let targetNode;
+            let originalName;
+            let parentColor;
 
-    try {
-        // 1. Find the node and its ancestors
-        currentData = myChart.getOption().series[0].data[0];
-        const findResult = findNodeAndAncestors(currentData, prompt);
+            try {
+                // 1. Find the node and its ancestors
+                currentData = myChart.getOption().series[0].data[0];
+                const findResult = findNodeAndAncestors(currentData, prompt);
 
-        if (!findResult) {
-            throw new Error(`Could not find node "${prompt}" in the current tree.`);
-        }
-        
-        const { node, path: nodePath } = findResult;
-        targetNode = node;
-        
-        // --- Determine the color to apply to new children (logic unchanged) ---
-        parentColor = (targetNode.label && targetNode.label.backgroundColor)
-                        ? targetNode.label.backgroundColor
-                        : 'var(--label-bg)'; 
-                        
-        if (parentColor === 'var(--label-bg)') {
-             if (nodePath.length > 1) {
-                 const parentNode = nodePath[nodePath.length - 2];
-                 if (parentNode && parentNode.children) {
-                     const siblingIndex = parentNode.children.findIndex(child => child.name === targetNode.name);
-                     if (siblingIndex !== -1) {
-                        parentColor = NODE_PALETTE[siblingIndex % NODE_PALETTE.length];
+                if (!findResult) {
+                    throw new Error(`Could not find node "${prompt}" in the current tree.`);
+                }
+                
+                const { node, path: nodePath } = findResult;
+                targetNode = node;
+                
+                // --- Determine the color to apply to new children (logic unchanged) ---
+                parentColor = (targetNode.label && targetNode.label.backgroundColor)
+                                ? targetNode.label.backgroundColor
+                                : 'var(--label-bg)'; 
+                                
+                if (parentColor === 'var(--label-bg)') {
+                     if (nodePath.length > 1) {
+                         const parentNode = nodePath[nodePath.length - 2];
+                         if (parentNode && parentNode.children) {
+                             const siblingIndex = parentNode.children.findIndex(child => child.name === targetNode.name);
+                             if (siblingIndex !== -1) {
+                                parentColor = NODE_PALETTE[siblingIndex % NODE_PALETTE.length];
+                             } else {
+                                 parentColor = NODE_PALETTE[0];
+                             }
+                         } else {
+                            parentColor = NODE_PALETTE[0];
+                         }
                      } else {
-                         parentColor = NODE_PALETTE[0];
+                        parentColor = NODE_PALETTE[0]; 
                      }
-                 } else {
-                    parentColor = NODE_PALETTE[0];
                  }
-             } else {
-                parentColor = NODE_PALETTE[0]; 
-             }
-         }
 
 
-        // --- Check if we need to fetch (Refined check) ---
-        let isStub = false;
-        let isContentMissing = !targetNode.practiceProblems; 
-        
-        if (targetNode.children && targetNode.children.length > 0) {
-            if (targetNode.children[0].practiceProblems === undefined) {
-                isStub = true;
-            }
-        } else if (!targetNode.children) {
-            isStub = true;
-        }
+                // --- Check if we need to fetch ---
+                let isStub = false;
+                let isContentMissing = !targetNode.practiceProblems; 
+                
+                if (targetNode.children && targetNode.children.length > 0) {
+                    if (targetNode.children[0].practiceProblems === undefined) {
+                        isStub = true;
+                    }
+                } else if (!targetNode.children) {
+                    isStub = true;
+                }
 
-        // If data is already fully loaded:
-        if (!isContentMissing && !isStub) {
-            console.log(`Node already has full data. Content-Only: ${isContentOnlyFetch}`);
+                // If data is already fully loaded:
+                if (!isContentMissing && !isStub) {
+                    console.log(`Node already has full data. Content-Only: ${isContentOnlyFetch}`);
 
-            // Only modify the tree structure if this was NOT a content-only fetch.
-            if (!isContentOnlyFetch) {
-                console.log("Un-collapsing node structure.");
-                nodePath.forEach(ancestorNode => { ancestorNode.collapsed = false; });
+                    // 1a. If left-click, UN-COLLAPSE the structure.
+                    if (!isContentOnlyFetch) {
+                        console.log("Un-collapsing node structure.");
+                        nodePath.forEach(ancestorNode => { ancestorNode.collapsed = false; });
+                        myChart.setOption({ series: [{ data: [currentData] }] });
+                    }
+
+                    // 1b. If right-click, open modal immediately.
+                    if (shouldOpenModal) {
+                         openModal(targetNode);
+                    }
+                    isExpanding = false; return;
+                }
+                
+                // If content is present, but structure is missing/stubbed, and we are only here for content
+                // This handles the case where structural data exists but content is missing, and we only need content.
+                if (isContentOnlyFetch && !isContentMissing) {
+                    if (shouldOpenModal) {
+                         openModal(targetNode);
+                    }
+                    isExpanding = false; return;
+                }
+
+
+                // Must fetch. Show loading state.
+                console.log("Node is missing data. Fetching full data...");
+                originalName = targetNode.name;
+                targetNode.name = `${originalName} (Loading...)`;
+                targetNode.label = { ...(targetNode.label || {}), color: '#a0a0a0' };
+                myChart.setOption({ series: [{ data: [currentData] }] }); 
+
+                const ancestorsForContext = nodePath.map(n => n.name).slice(0, -1);
+
+                // 2. Get data (network call)
+                console.log(`Fetching new data for expansion: ${prompt}, Ancestors: ${ancestorsForContext.join(' -> ')}`);
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, ancestors: ancestorsForContext }),
+                });
+                
+                const text = await response.text();
+                let newData;
+                try { 
+                    newData = JSON.parse(text); 
+                } catch (err) { 
+                    if (!response.ok) throw new Error(`Server error (${response.status})`);
+                    else throw err; 
+                }
+                if (!response.ok) { 
+                     const details = newData?.details || `Status ${response.status}`;
+                     throw new Error(details);
+                 }
+                
+                // --- 3. CRITICAL FIX: Selective Merge (The core behavior logic) ---
+                
+                if (isContentOnlyFetch) {
+                    // Right-Click (Content Only): Only merge content properties, leaving 'children' untouched.
+                    targetNode.practiceProblems = newData.practiceProblems || [];
+                    targetNode.videoTutorials = newData.videoTutorials || [];
+                } else {
+                    // Left-Click (Structure/Full Fetch): Overwrite structure and content.
+                    const dataToColorize = JSON.parse(JSON.stringify(newData)); 
+                    const colorizedNewData = colorizeTreeData(dataToColorize, parentColor);
+                    Object.assign(targetNode, colorizedNewData); 
+                }
+                
+                skillCache[prompt] = targetNode; 
+
+                // --- Restore original name and style ---
+                targetNode.name = originalName;
+                targetNode.label = { ...(targetNode.label || {}), color: '#ffffff' }; 
+
+                // 4. Update Tree Structure **ONLY IF NOT CONTENT-ONLY**
+                if (!isContentOnlyFetch) {
+                    nodePath.forEach(ancestorNode => { ancestorNode.collapsed = false; });
+                }
+
+                // 5. Update chart (needed for name change and structure change/none)
                 myChart.setOption({ series: [{ data: [currentData] }] });
+                
+                // Open the modal if requested (right-click)
+                if (shouldOpenModal) {
+                    openModal(targetNode);
+                }
+
+            } catch (error) {
+                console.error('Failed to expand node:', error);
+                alert(`Error expanding node: ${error.message}`);
+                if (targetNode && originalName) {
+                    targetNode.name = originalName;
+                    targetNode.label = { ...(targetNode.label || {}), color: 'var(--error-color)' };
+                    myChart.setOption({ series: [{ data: [currentData] }] });
+                }
+            } finally {
+                isExpanding = false;
             }
-
-            if (shouldOpenModal) {
-                 openModal(targetNode);
-            }
-            isExpanding = false; return;
         }
         
-        // If content is present, but structure is missing/stubbed, and we are only here for content
-        if (isContentOnlyFetch && !isContentMissing) {
-            if (shouldOpenModal) {
-                 openModal(targetNode);
-            }
-            isExpanding = false; return;
-        }
-
-
-        // Must fetch. Show loading state.
-        console.log("Node is missing data. Fetching full data...");
-        originalName = targetNode.name;
-        targetNode.name = `${originalName} (Loading...)`;
-        targetNode.label = { ...(targetNode.label || {}), color: '#a0a0a0' };
-        myChart.setOption({ series: [{ data: [currentData] }] }); 
-
-        const ancestorsForContext = nodePath.map(n => n.name).slice(0, -1);
-
-        // 2. Get data (network call)
-        console.log(`Fetching new data for expansion: ${prompt}, Ancestors: ${ancestorsForContext.join(' -> ')}`);
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: prompt, ancestors: ancestorsForContext }),
-        });
-        
-        const text = await response.text();
-        let newData;
-        try { 
-            newData = JSON.parse(text); 
-        } catch (err) { 
-            if (!response.ok) throw new Error(`Server error (${response.status})`);
-            else throw err; 
-        }
-        if (!response.ok) { 
-             const details = newData?.details || `Status ${response.status}`;
-             throw new Error(details);
-         }
-        
-        // --- 3. CRITICAL FIX: Selective Merge ---
-        
-        if (isContentOnlyFetch) {
-            // LOGICAL FIX: Only copy content fields and explicitly ignore 'children'.
-            
-            // 1. Copy content properties
-            targetNode.practiceProblems = newData.practiceProblems || [];
-            targetNode.videoTutorials = newData.videoTutorials || [];
-
-            // 2. Ensure children are NOT copied by doing nothing, preserving the existing structure.
-            //    If children were already present, they remain. If not, they remain undefined.
-            
-        } else {
-            // Structure/Full Fetch: Overwrite everything (including children)
-            const dataToColorize = JSON.parse(JSON.stringify(newData)); 
-            
-            // Apply color to the NEW children
-            const colorizedNewData = colorizeTreeData(dataToColorize, parentColor);
-            
-            // Copy all properties, including the new 'children' array
-            Object.assign(targetNode, colorizedNewData); 
-        }
-        
-        skillCache[prompt] = targetNode; 
-
-        // --- Restore original name and style ---
-        targetNode.name = originalName;
-        targetNode.label = { ...(targetNode.label || {}), color: '#ffffff' }; 
-
-        // 4. Update Tree Structure **ONLY IF NOT CONTENT-ONLY**
-        if (!isContentOnlyFetch) {
-            nodePath.forEach(ancestorNode => { ancestorNode.collapsed = false; });
-        }
-
-        // 5. Update chart
-        myChart.setOption({ series: [{ data: [currentData] }] });
-        
-        // Open the modal if requested
-        if (shouldOpenModal) {
-            openModal(targetNode);
-        }
-
-    } catch (error) {
-        console.error('Failed to expand node:', error);
-        alert(`Error expanding node: ${error.message}`);
-        if (targetNode && originalName) {
-            targetNode.name = originalName;
-            targetNode.label = { ...(targetNode.label || {}), color: 'var(--error-color)' };
-            myChart.setOption({ series: [{ data: [currentData] }] });
-        }
-    } finally {
-        isExpanding = false;
-    }
-}
-
         // --- UPDATED 'fetchAndDrawTree' FUNCTION (With Coloring) ---
         async function fetchAndDrawTree(prompt) {
             const treeContainer = document.getElementById('tree-container');
@@ -886,8 +878,8 @@
             document.getElementById('modal-title').textContent = nodeData.name;
             const problemsContainer = document.getElementById('practice-problems');
             const videosContainer = document.getElementById('video-tutorials');
-            problemsContainer.innerHTML = '<h3>Overview</h3>';
-            videosContainer.innerHTML = '<h3>Resources</h3>';
+            problemsContainer.innerHTML = '<h3>Practice Problems</h3>';
+            videosContainer.innerHTML = '<h3>Video Tutorials</h3>';
             
             if (nodeData.practiceProblems && nodeData.practiceProblems.length > 0) {
                 nodeData.practiceProblems.forEach(prob => {
@@ -896,8 +888,8 @@
                     problemsContainer.appendChild(el);
                 });
             } else {
-                // --- FIX 1: Updated instruction for missing content ---
-                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">Right-click this node on the graph to generate its content.</p>';
+                // Instruction is now just a loading message, as fetch is triggered on right-click
+                problemsContainer.innerHTML += '<p style="color: var(--text-secondary);">Content is currently loading or failed to generate.</p>';
             }
             if (nodeData.videoTutorials && nodeData.videoTutorials.length > 0) {
                 nodeData.videoTutorials.forEach(vid => {
@@ -907,8 +899,8 @@
                     videosContainer.appendChild(el);
                 });
             } else {
-                // --- FIX 2: Updated instruction for missing videos ---
-                videosContainer.innerHTML += '<p style="color: var(--text-secondary);">Right-click the node to generate videos.</p>';
+                // Instruction is now just a loading message, as fetch is triggered on right-click
+                videosContainer.innerHTML += '<p style="color: var(--text-secondary);">Video tutorials not available.</p>';
             }
             document.getElementById('modal-overlay').style.display = 'flex';
         }
@@ -937,26 +929,26 @@
 
             const chartOptions = {
                 backgroundColor: 'transparent',
+                // Tooltip Config (The working one from previous steps)
                 tooltip: { 
-                    trigger: 'item', // Trigger when hovering over a graph item (node)
-            triggerOn: 'mousemove', // Only show on mouse move (hover)
-            backgroundColor: 'rgba(30, 30, 30, 0.95)', // Dark background
-            borderColor: '#555',
-            borderWidth: 1,
-            padding: [2, 8],
-            textStyle: {
-                color: '#ffffff',
-                fontSize: 14,
-                fontFamily: 'Inter, sans-serif'
-            },
-            formatter: function (params) {
-                // Display the name of the node
-                return `<span style="font-weight: 600;">${params.name}</span>`;
-            }
+                    trigger: 'item',
+                    triggerOn: 'mousemove',
+                    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                    borderColor: '#555',
+                    borderWidth: 1,
+                    padding: [8, 12],
+                    textStyle: {
+                        color: '#ffffff',
+                        fontSize: 14,
+                        fontFamily: 'Inter, sans-serif'
+                    },
+                    formatter: function (params) {
+                        return `<span style="font-weight: 600;">${params.name}</span>`;
+                    }
                 },
                 series: [
                     {
-                        type: 'tree', data: [data], layout: 'radial', roam: 'scale',
+                        type: 'tree', data: [data], layout: 'radial', roam: 'scale', // roam: 'scale' enables zoom only
                         boundingCoords: [-100000, -100000, 100000, 100000],
                         scaleLimit: { min: 0.3, max: 3.0 },
                         expandAndCollapse: false, animationDuration: animationDuration,
@@ -986,63 +978,60 @@
             myChart.setOption(chartOptions);
             myChart.on('roam', onChartRoam);
 
-            // --- Click Handler (Unchanged) ---
+            // --- LEFT-CLICK HANDLER (EXPAND/COLLAPSE STRUCTURE) ---
             myChart.on('click', (params) => {
-        if (!params.data) return;
-        params.event.event.preventDefault(); 
-        params.event.event.stopPropagation();
-        
-        const currentData = myChart.getOption().series[0].data[0];
-        const findResult = findNodeAndAncestors(currentData, params.data.name);
-        if (!findResult) return;
-        
-        const { node } = findResult;
-        
-        // Check for Collapse/Context Menu keys (Ctrl/Meta) - still useful for forcing collapse
-        const isCollapseKey = params.event.event.ctrlKey || params.event.event.metaKey;
+                if (!params.data) return;
+                params.event.event.preventDefault(); 
+                params.event.event.stopPropagation();
+                
+                const currentData = myChart.getOption().series[0].data[0];
+                const findResult = findNodeAndAncestors(currentData, params.data.name);
+                if (!findResult) return;
+                
+                const { node } = findResult;
+                const isCollapseKey = params.event.event.ctrlKey || params.event.event.metaKey;
 
-        // Determine if the node has children and is not currently collapsed
-        const isExpanded = node.children && node.children.length > 0 && !node.collapsed;
+                // Determine if the node has children and is not currently collapsed
+                const isExpanded = node.children && node.children.length > 0 && !node.collapsed;
 
-        if (isExpanded || isCollapseKey) {
-            // Logic for Collapsing (Left-click on an open node, or Ctrl/Meta+Click)
-            console.log(`Collapsing node: ${node.name}`);
-            node.collapsed = true;
-            myChart.setOption({ series: [{ data: [currentData] }] });
-            return; 
-        }
+                if (isExpanded || isCollapseKey) {
+                    // Logic for Collapsing 
+                    console.log(`Collapsing node: ${node.name}`);
+                    node.collapsed = true;
+                    myChart.setOption({ series: [{ data: [currentData] }] });
+                    return; 
+                }
 
-        // Logic for Expanding (Left-click on a collapsed or new node)
-        console.log(`Expanding/Fetching node structure: ${node.name}`);
-        // Call expandNode without the 'shouldOpenModal' flag
-        expandNode(node.name, false); 
-    });
+                // Logic for Expanding (fetches full data, updates structure and content)
+                console.log(`Expanding/Fetching node structure: ${node.name}`);
+                // shouldOpenModal=false, isContentOnlyFetch=false
+                expandNode(node.name, false, false); 
+            });
 
-    // --- UPDATED Right-Click Handler (Content Generation/Display Only) ---
-    myChart.on('contextmenu', (params) => {
-        params.event.event.preventDefault(); // Prevent default browser context menu
-        if (params.componentType === 'series' && params.componentSubType === 'tree' && params.data) {
-            
-            const currentData = myChart.getOption().series[0].data[0];
-            const findResult = findNodeAndAncestors(currentData, params.data.name);
-            if (!findResult) return;
-            const { node } = findResult;
-            
-            // Check if content (practiceProblems) is missing.
-            const isContentMissing = !node.practiceProblems; 
-            
-            if (isContentMissing) {
-                console.log(`Right-click: Triggering content fetch for modal for ${node.name}.`);
-                // Use expandNode to fetch the full content, and pass the flag to open the modal afterward.
-                // NOTE: expandNode will handle the re-render when the data comes back.
-                expandNode(node.name, true); 
-            } else {
-                // Content is already loaded, just open the modal.
-                openModal(node);
-            }
-        }
-    });
-        window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
+            // --- RIGHT-CLICK HANDLER (CONTENT GENERATION/MODAL) ---
+            myChart.on('contextmenu', (params) => {
+                params.event.event.preventDefault(); // Prevent default browser context menu
+                if (params.componentType === 'series' && params.componentSubType === 'tree' && params.data) {
+                    
+                    const currentData = myChart.getOption().series[0].data[0];
+                    const findResult = findNodeAndAncestors(currentData, params.data.name);
+                    if (!findResult) return;
+                    const { node } = findResult;
+                    
+                    // Check if content (practiceProblems) is missing.
+                    const isContentMissing = !node.practiceProblems; 
+                    
+                    if (isContentMissing) {
+                        console.log(`Right-click: Triggering content fetch for modal for ${node.name}.`);
+                        // shouldOpenModal=true, isContentOnlyFetch=TRUE (DOES NOT expand structure)
+                        expandNode(node.name, true, true);
+                    } else {
+                        // Content is already loaded, just open the modal.
+                        openModal(node);
+                    }
+                }
+            });
+            window.addEventListener('resize', () => { if (myChart) myChart.resize(); });
         }
         
     </script>
